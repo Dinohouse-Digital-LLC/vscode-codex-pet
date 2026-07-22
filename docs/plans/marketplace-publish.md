@@ -35,25 +35,14 @@ needs the new repo's real (public) URL.
 ## Checklist
 
 ### Phase 1 — extract subdirectory into a standalone repo
-- [ ] Confirm `git-filter-repo` is installed (`brew install git-filter-repo`
-      if not — the plain `git filter-branch` path is much slower and being
-      phased out upstream).
-- [ ] Clone (not move) the current repo to a scratch location, run
-      `git filter-repo --subdirectory-filter vscode-codex-pet` there so the
-      original `Firefox_Extensions` repo is untouched.
-- [ ] Verify the filtered history: `git log --oneline` should show only
-      commits that touched `vscode-codex-pet/`, with paths rewritten to be
-      relative to the new repo root (e.g. `package.json` not
-      `vscode-codex-pet/package.json`).
-- [ ] Create the new standalone repo (GitHub, under andrewdeck) and push the
-      filtered history to it.
-- [ ] Decide what happens to `vscode-codex-pet/` in the original monorepo —
-      remove it there (with a note pointing at the new repo) or leave it as
-      a stale copy. Confirm with Andrew before deleting anything from the
-      monorepo.
-- [ ] Re-clone the new standalone repo as the working copy going forward;
-      confirm `npm install` / `npm run compile` / F5 debug launch still work
-      from the new location.
+- [x] Turned out this working copy had no prior git history to extract from
+      (not actually inside the `Firefox_Extensions` monorepo at the time),
+      so the `git filter-repo` path described below wasn't needed — did a
+      plain `git init` + initial commit instead.
+- [x] Created the new standalone repo on GitHub under the `TempusShift`
+      account (confirmed as the correct account) and pushed:
+      `https://github.com/TempusShift/vscode-codex-pet`.
+- [x] Confirmed `npm run compile` and packaging work from this location.
 
 ### Phase 2 — make the extension publishable
 - [x] Remove `"private": true` from `package.json`.
@@ -68,18 +57,20 @@ needs the new repo's real (public) URL.
 - [x] Bumped `version` to `0.1.0` for the first Marketplace release.
 
 ### Phase 3 — publisher account + credentials
-- [ ] Create (or verify) an Azure DevOps organization for Andrew.
-- [ ] Generate a Personal Access Token scoped to Marketplace (Manage).
-- [ ] `vsce create-publisher andrewdeck` (skip if the publisher ID already
-      exists on the Marketplace).
-- [ ] `vsce login andrewdeck`, pasting the PAT when prompted.
+- [x] Publisher `dinohousedigitalllc` created via the Marketplace management
+      portal (`marketplace.visualstudio.com/manage`) — not `andrewdeck` as
+      originally assumed; `package.json`'s `publisher` field updated to
+      match.
+- [x] `vsce login` was blocked by an Azure AD error ("Selected user account
+      does not exist in tenant 'Microsoft Services'") that couldn't be
+      resolved via account/tenant switching in the time available — abandoned
+      the CLI login path in favor of Phase 4's manual upload.
 
 ### Phase 4 — publish
-- [ ] `npm run compile` and sanity-check the extension still runs via F5
-      from the new repo location.
-- [ ] `vsce package` and manually install/test the produced `.vsix` once
-      more before publishing.
-- [ ] `vsce publish` (or upload the `.vsix` manually via the Marketplace
-      Partner Center) to go live.
-- [ ] Confirm the Marketplace listing renders correctly — icon, README,
-      repository link all resolve.
+- [x] `npm run compile`, `vsce package --no-rewrite-relative-links`, then
+      `code --install-extension` to sanity-test the `.vsix` locally. Caught
+      and fixed two real bugs this way (see below) before uploading.
+- [x] Published via manual drag-and-drop upload of the `.vsix` at
+      `marketplace.visualstudio.com/manage/publishers/dinohousedigitalllc`,
+      since `vsce publish` wasn't available (Phase 3).
+- [x] Confirmed the listing renders correctly.

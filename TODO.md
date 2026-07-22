@@ -1,3 +1,2 @@
 - [ ] XP / leveling system — [plan](docs/plans/xp-leveling-system.md)
-- [ ] Publish to VS Code Marketplace (extract standalone repo first) — [plan](docs/plans/marketplace-publish.md)
 - [ ] Multiple pets at once — [plan](docs/plans/multiple-pets.md)
