@@ -1,0 +1,7 @@
+{
+  "id": "cat-stack",
+  "displayName": "Cat Stack",
+  "description": "A calm compact stack of six visibly distinct cats.",
+  "spriteVersionNumber": 2,
+  "spritesheetPath": "spritesheet.webp"
+}

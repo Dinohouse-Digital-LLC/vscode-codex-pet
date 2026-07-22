@@ -1,0 +1,171 @@
+{
+  "name": "vscode-codex-pet",
+  "displayName": "Codex Pet",
+  "description": "A sprite-sheet pet that walks around a VS Code panel, similar to vscode-pets.",
+  "version": "0.0.4",
+  "publisher": "andrewdeck",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://git.andrewdeck.dev/andrew/firefox_extensions.git",
+    "directory": "vscode-codex-pet"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codexPetContainer",
+          "title": "Codex Pet",
+          "icon": "media/icons/activitybar.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "codexPetPanelContainer",
+          "title": "Codex Pet",
+          "icon": "media/icons/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "codexPetContainer": [
+        {
+          "id": "codexPetView",
+          "name": "",
+          "type": "webview",
+          "when": "codexPet.showInSidebar"
+        }
+      ],
+      "codexPetPanelContainer": [
+        {
+          "id": "codexPetPanelView",
+          "name": "",
+          "type": "webview",
+          "when": "codexPet.showInPanel"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "codexPet.start",
+        "title": "Codex Pet: Reveal Pet View"
+      },
+      {
+        "command": "codexPet.choosePet",
+        "title": "Codex Pet: Choose Pet..."
+      },
+      {
+        "command": "codexPet.openPetsFolder",
+        "title": "Codex Pet: Open Pets Folder"
+      },
+      {
+        "command": "codexPet.installClaudeCodeHooks",
+        "title": "Codex Pet: Install Claude Code Hooks..."
+      }
+    ],
+    "configuration": {
+      "title": "Codex Pet",
+      "properties": {
+        "codexPet.location": {
+          "type": "string",
+          "enum": [
+            "panel",
+            "sidebar",
+            "both"
+          ],
+          "enumDescriptions": [
+            "Show the pet in the bottom panel, alongside Terminal/Output.",
+            "Show the pet in the Activity Bar side panel, alongside Explorer/Git.",
+            "Show the pet in both locations at once (each runs independently)."
+          ],
+          "default": "panel",
+          "description": "Where the Codex Pet view is shown."
+        },
+        "codexPet.selectedPet": {
+          "type": "string",
+          "default": "",
+          "description": "Pet id or folder name under pets/ to load. Leave empty to use the last pet picked via \"Codex Pet: Choose Pet...\" (or the only pet, if just one exists)."
+        },
+        "codexPet.walkSpeed": {
+          "type": "number",
+          "default": 40,
+          "minimum": 1,
+          "description": "Pixels per second the pet moves while running/walking."
+        },
+        "codexPet.moveChance": {
+          "type": "number",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Probability the pet starts moving (vs. playing a stationary animation) at the start of each action cycle."
+        },
+        "codexPet.minActionDuration": {
+          "type": "number",
+          "default": 1500,
+          "minimum": 100,
+          "description": "Minimum delay in milliseconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
+        },
+        "codexPet.maxActionDuration": {
+          "type": "number",
+          "default": 3500,
+          "minimum": 100,
+          "description": "Maximum delay in milliseconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
+        },
+        "codexPet.idleStateWeights": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "Relative chance of each idle animation being picked, e.g. { \"wave\": 3, \"jump\": 1 }. States not listed default to a weight of 1; a weight of 0 disables that animation. State names depend on the selected pet's idleStates."
+        },
+        "codexPet.jumpCooldown": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 0,
+          "description": "Minimum delay in milliseconds between cursor-triggered jumps."
+        },
+        "codexPet.petScale": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.25,
+          "maximum": 5,
+          "description": "Scale multiplier applied to the pet's sprite size."
+        },
+        "codexPet.reactToAiActivity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Play a busy animation while a connected AI tool (e.g. Claude Code, via its hooks) is actively working. Reads status files from ~/.codex-pet/."
+        },
+        "codexPet.reactToCopilotActivity": {
+          "type": "boolean",
+          "default": false,
+          "description": "Experimental: guess when GitHub Copilot Chat is actively editing files, using an editor-heuristic (VS Code has no public API for this yet) since Copilot has no hooks mechanism like Claude Code. Off by default because it can misfire on pastes, formatting, or other bulk edits."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package --no-rewrite-relative-links",
+    "install-extension": "npm run package && code --install-extension $(node -p \"require('./package.json').name+'-'+require('./package.json').version+'.vsix'\")"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.4.0"
+  }
+}
