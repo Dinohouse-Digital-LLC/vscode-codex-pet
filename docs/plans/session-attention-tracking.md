@@ -66,7 +66,7 @@ different rates:
 - `busy` keeps today's `AI_STATUS_STALE_MS` (30s) — a crashed session
   mid-tool-call should stop animating quickly.
 - `waiting` needs a much longer timeout (proposed default: 4 hours, via a new
-  `codexPet.waitingStaleMs` setting) since a session can legitimately sit
+  `codexPet.waitingStaleMinutes` setting) since a session can legitimately sit
   waiting for a human for a long time. This only exists to eventually
   self-clean sessions that crashed *after* `Stop` but never got a
   `SessionEnd` (e.g. terminal closed).
@@ -106,7 +106,7 @@ independent of the busy animation.
       under `~/.codex-pet/sessions/` and rely on a `source` field written
       into the JSON itself (not filename parsing — avoids ambiguity since
       `claude-code` itself contains a hyphen).
-- [x] Added `codexPet.waitingStaleMs` setting (default 4h); kept
+- [x] Added `codexPet.waitingStaleMinutes` setting (default 4h); kept
       `AI_STATUS_STALE_MS` (30s) for `busy` only.
 - [x] Rewrote `computeAiState` to return
       `{ busy: boolean, label?: string, waiting: { id: string, label: string }[] }`.
@@ -131,7 +131,7 @@ independent of the busy animation.
 
 ### Phase 4 — docs
 - [x] Updated [README.md](../../README.md): waiting-badge behavior, the new
-      per-session status file shape/location, `codexPet.waitingStaleMs` in
+      per-session status file shape/location, `codexPet.waitingStaleMinutes` in
       the settings table, the Copilot section's file path, and a note for
       existing users to re-run **Install Claude Code Hooks...** and manually
       remove stale `idle`-reporting hook entries.

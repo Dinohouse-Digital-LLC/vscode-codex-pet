@@ -602,9 +602,10 @@ interface AiState {
 }
 
 function getWaitingStaleMs(): number {
-  return vscode.workspace
+  const minutes = vscode.workspace
     .getConfiguration('codexPet')
-    .get<number>('waitingStaleMs', 4 * 60 * 60 * 1000);
+    .get<number>('waitingStaleMinutes', 240);
+  return minutes * 60 * 1000;
 }
 
 function readSessionStatusFiles(): { file: string; data: SessionStatusFile }[] {

@@ -168,11 +168,11 @@
           ],
           "description": "Which AI tools the pet plays a busy animation for while they're actively working. Leave empty to disable AI-activity reactions entirely."
         },
-        "codexPet.waitingStaleMs": {
+        "codexPet.waitingStaleMinutes": {
           "type": "number",
-          "default": 14400000,
+          "default": 240,
           "minimum": 0,
-          "description": "How long (ms) a session can sit in the 'waiting for you' state before it's treated as stale and dropped from the pet's waiting-session list. Only cleans up sessions that crashed after finishing a response but before ending; a normally-waiting session isn't affected by how long a human takes to reply."
+          "description": "How long (minutes) a session can sit in the 'waiting for you' state before it's treated as stale and dropped from the pet's waiting-session list. Only cleans up sessions that crashed after finishing a response but before ending; a normally-waiting session isn't affected by how long a human takes to reply."
         },
         "codexPet.xpEnabled": {
           "type": "boolean",

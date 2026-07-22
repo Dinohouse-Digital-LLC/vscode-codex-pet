@@ -67,7 +67,7 @@ This works by watching per-session status files under
 null> }`). A `busy` status older than 30s is treated as stale and ignored, so
 a crashed session can't leave the pet stuck animating. A `waiting` status can
 sit for much longer before being dropped (default 4 hours, via
-`codexPet.waitingStaleMs`) since a session can legitimately wait on a human
+`codexPet.waitingStaleMinutes`) since a session can legitimately wait on a human
 for a long time — this timeout only exists to eventually clean up sessions
 that crashed after finishing a response but before ending.
 
@@ -148,7 +148,7 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.maxActionDuration`    | `3500`  | Maximum ms spent in one action before picking a new one.                     |
 | `codexPet.idleAnimationSpeed`   | `1`     | Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). Doesn't affect walk/run. |
 | `codexPet.aiActivitySources`    | `["claude-code"]` | Which AI tools trigger the busy animation + speech bubble: `claude-code`, `copilot` (experimental heuristic), both, or empty to disable. See below. |
-| `codexPet.waitingStaleMs`       | `14400000` (4h) | How long a Claude Code session can sit in the "waiting for you" state before its badge entry is dropped as stale (crash cleanup only — doesn't affect normal waiting). |
+| `codexPet.waitingStaleMinutes`  | `240` (4h) | How long (minutes) a Claude Code session can sit in the "waiting for you" state before its badge entry is dropped as stale (crash cleanup only — doesn't affect normal waiting). |
 | `codexPet.xpEnabled`            | `true`  | Whether the pet earns XP/levels from coding activity (AI tool activity, editor edits, terminal use, git commits, clicks). Progress (and level) is tracked separately per pet. |
 | `codexPet.petGrowthEnabled`     | `false` | Whether the pet's sprite size grows with its level, from `petGrowthMinScale` at level 1 up to `petGrowthMaxScale` at `petGrowthMaxLevel`. Both are multipliers of `codexPet.petScale`. Requires `xpEnabled`. |
 | `codexPet.petGrowthMinScale`    | `0.7`   | Size multiplier at level 1, when growth is enabled. |
