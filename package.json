@@ -119,6 +119,13 @@
           "minimum": 100,
           "description": "Maximum delay in milliseconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
         },
+        "codexPet.idleAnimationSpeed": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.1,
+          "maximum": 5,
+          "description": "Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). 1 is normal speed; higher is faster, lower is slower. Does not affect walk/run animations."
+        },
         "codexPet.idleStateWeights": {
           "type": "object",
           "default": {},
@@ -141,15 +148,18 @@
           "maximum": 5,
           "description": "Scale multiplier applied to the pet's sprite size."
         },
-        "codexPet.reactToAiActivity": {
-          "type": "boolean",
-          "default": true,
-          "description": "Play a busy animation while a connected AI tool (e.g. Claude Code, via its hooks) is actively working. Reads status files from ~/.codex-pet/."
-        },
-        "codexPet.reactToCopilotActivity": {
-          "type": "boolean",
-          "default": false,
-          "description": "Experimental: guess when GitHub Copilot Chat is actively editing files, using an editor-heuristic (VS Code has no public API for this yet) since Copilot has no hooks mechanism like Claude Code. Off by default because it can misfire on pastes, formatting, or other bulk edits."
+        "codexPet.aiActivitySources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["claude-code", "copilot"],
+            "enumDescriptions": [
+              "Claude Code, via hooks reporting to ~/.codex-pet/.",
+              "Experimental: guess when GitHub Copilot Chat is actively editing files, using an editor-heuristic (VS Code has no public API for this yet). Can misfire on pastes, formatting, or other bulk edits."
+            ]
+          },
+          "default": ["claude-code"],
+          "description": "Which AI tools the pet plays a busy animation for while they're actively working. Leave empty to disable AI-activity reactions entirely."
         }
       }
     }

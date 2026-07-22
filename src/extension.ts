@@ -25,6 +25,7 @@ interface TimingConfig {
   minActionDuration: number;
   maxActionDuration: number;
   jumpCooldown: number;
+  idleAnimationSpeed: number;
 }
 
 function getTimingConfig(): TimingConfig {
@@ -35,6 +36,7 @@ function getTimingConfig(): TimingConfig {
     minActionDuration: config.get<number>('minActionDuration', 1500),
     maxActionDuration: config.get<number>('maxActionDuration', 3500),
     jumpCooldown: config.get<number>('jumpCooldown', 5000),
+    idleAnimationSpeed: config.get<number>('idleAnimationSpeed', 1),
   };
 }
 
@@ -44,6 +46,7 @@ const TIMING_SETTINGS = [
   'codexPet.minActionDuration',
   'codexPet.maxActionDuration',
   'codexPet.jumpCooldown',
+  'codexPet.idleAnimationSpeed',
 ];
 
 function getPetScale(): number {
@@ -156,15 +159,14 @@ async function resolvePet(
 // state by writing "<source>.json" files into this directory. We watch it and
 // treat the pet as "busy" whenever any source is busy and recently reported in.
 const AI_STATUS_DIR = path.join(os.homedir(), '.codex-pet');
-const AI_STATUS_SOURCES = ['claude-code', 'copilot'];
 const AI_STATUS_STALE_MS = 30000;
 
-function writeAiStatus(source: string, state: 'busy' | 'idle'): void {
+function writeAiStatus(source: string, state: 'busy' | 'idle', label?: string): void {
   try {
     fs.mkdirSync(AI_STATUS_DIR, { recursive: true });
     fs.writeFileSync(
       path.join(AI_STATUS_DIR, `${source}.json`),
-      JSON.stringify({ state, updatedAt: Date.now() }),
+      JSON.stringify({ state, updatedAt: Date.now(), label: label ?? null }),
     );
   } catch {
     // Best-effort: if this fails, AI-activity reactions just won't be available.
@@ -173,9 +175,26 @@ function writeAiStatus(source: string, state: 'busy' | 'idle'): void {
 const HOOK_SCRIPT_PATH = path.join(AI_STATUS_DIR, 'report-status.sh');
 const HOOK_SCRIPT_CONTENTS = `#!/usr/bin/env bash
 # Installed by the Codex Pet VS Code extension. Reports AI tool activity so the
-# pet can react. Usage: report-status.sh <source> <busy|idle>
+# pet can react. Usage: report-status.sh <source> <busy|idle> [label]
+# For busy events Claude Code pipes the hook's JSON payload on stdin; if no
+# explicit label was passed, pull "tool_name" out of it so the pet can show
+# what it's doing (e.g. "Bash", "Edit") instead of a generic busy indicator.
 dir="$(cd "$(dirname "$0")" && pwd)"
-printf '{"state":"%s","updatedAt":%s}' "$2" "$(date +%s000)" > "$dir/$1.json"
+source="$1"
+state="$2"
+label="$3"
+
+if [ -z "$label" ] && [ "$state" = "busy" ] && [ ! -t 0 ]; then
+  input="$(cat 2>/dev/null)"
+  label="$(printf '%s' "$input" | sed -n 's/.*"tool_name" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
+fi
+
+label_json="null"
+if [ -n "$label" ]; then
+  label_json="\\"$(printf '%s' "$label" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
+fi
+
+printf '{"state":"%s","updatedAt":%s,"label":%s}' "$state" "$(date +%s000)" "$label_json" > "$dir/$source.json"
 `;
 
 function ensureHookScript(): void {
@@ -194,7 +213,7 @@ interface HookEntry {
 
 const CLAUDE_HOOK_COMMANDS: { event: string; command: string }[] = [
   { event: 'PreToolUse', command: '~/.codex-pet/report-status.sh claude-code busy' },
-  { event: 'UserPromptSubmit', command: '~/.codex-pet/report-status.sh claude-code busy' },
+  { event: 'UserPromptSubmit', command: '~/.codex-pet/report-status.sh claude-code busy Thinking' },
   { event: 'Stop', command: '~/.codex-pet/report-status.sh claude-code idle' },
   { event: 'SessionEnd', command: '~/.codex-pet/report-status.sh claude-code idle' },
 ];
@@ -220,7 +239,7 @@ function missingClaudeHookCount(): number {
 const CLAUDE_HOOKS_PROMPT_DISMISSED_KEY = 'codexPet.claudeHooksPromptDismissed';
 
 async function maybePromptToInstallClaudeCodeHooks(context: vscode.ExtensionContext): Promise<void> {
-  if (!isAiActivityEnabled()) return;
+  if (!getAiActivitySources().includes('claude-code')) return;
   if (context.globalState.get<boolean>(CLAUDE_HOOKS_PROMPT_DISMISSED_KEY)) return;
   if (missingClaudeHookCount() === 0) return;
 
@@ -288,24 +307,41 @@ async function installClaudeCodeHooks(): Promise<void> {
   }
 }
 
-function readAiSourceBusy(source: string): boolean {
+const SOURCE_DEFAULT_LABELS: Record<string, string> = {
+  'claude-code': 'Claude Code',
+  copilot: 'Copilot',
+};
+
+interface AiSourceStatus {
+  busy: boolean;
+  label: string;
+}
+
+function readAiSourceStatus(source: string): AiSourceStatus | undefined {
   try {
     const bytes = fs.readFileSync(path.join(AI_STATUS_DIR, `${source}.json`), 'utf8');
-    const data = JSON.parse(bytes) as { state?: string; updatedAt?: number };
-    if (data.state !== 'busy') return false;
-    if (typeof data.updatedAt !== 'number') return false;
-    return Date.now() - data.updatedAt <= AI_STATUS_STALE_MS;
+    const data = JSON.parse(bytes) as { state?: string; updatedAt?: number; label?: string };
+    if (data.state !== 'busy') return undefined;
+    if (typeof data.updatedAt !== 'number') return undefined;
+    if (Date.now() - data.updatedAt > AI_STATUS_STALE_MS) return undefined;
+    return { busy: true, label: data.label || SOURCE_DEFAULT_LABELS[source] || source };
   } catch {
-    return false;
+    return undefined;
   }
 }
 
-function computeAiBusy(): boolean {
-  return AI_STATUS_SOURCES.some(readAiSourceBusy);
+function computeAiState(): { busy: boolean; label?: string } {
+  for (const source of getAiActivitySources()) {
+    const status = readAiSourceStatus(source);
+    if (status?.busy) return status;
+  }
+  return { busy: false };
 }
 
-function isAiActivityEnabled(): boolean {
-  return vscode.workspace.getConfiguration('codexPet').get<boolean>('reactToAiActivity', true);
+function getAiActivitySources(): string[] {
+  return vscode.workspace
+    .getConfiguration('codexPet')
+    .get<string[]>('aiActivitySources', ['claude-code']);
 }
 
 // GitHub Copilot Chat has no hooks/lifecycle API to report activity like Claude
@@ -316,7 +352,7 @@ function isAiActivityEnabled(): boolean {
 const COPILOT_HEURISTIC_IDLE_MS = 2000;
 
 function isCopilotActivityEnabled(): boolean {
-  return vscode.workspace.getConfiguration('codexPet').get<boolean>('reactToCopilotActivity', false);
+  return getAiActivitySources().includes('copilot');
 }
 
 function looksLikeAgentEdit(event: vscode.TextDocumentChangeEvent): boolean {
@@ -335,7 +371,7 @@ function startCopilotActivityHeuristic(): vscode.Disposable {
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
   const markBusy = () => {
-    writeAiStatus('copilot', 'busy');
+    writeAiStatus('copilot', 'busy', SOURCE_DEFAULT_LABELS.copilot);
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(() => writeAiStatus('copilot', 'idle'), COPILOT_HEURISTIC_IDLE_MS);
   };
@@ -352,15 +388,16 @@ function startCopilotActivityHeuristic(): vscode.Disposable {
 }
 
 function startAiActivityWatcher(providers: CodexPetViewProvider[]): vscode.Disposable {
-  let lastBusy: boolean | undefined;
+  let lastKey: string | undefined;
   let watcher: fs.FSWatcher | undefined;
   let disposed = false;
 
   const broadcast = () => {
-    const busy = isAiActivityEnabled() && computeAiBusy();
-    if (busy === lastBusy) return;
-    lastBusy = busy;
-    for (const provider of providers) provider.postAiState(busy);
+    const state = computeAiState();
+    const key = `${state.busy}:${state.label ?? ''}`;
+    if (key === lastKey) return;
+    lastKey = key;
+    for (const provider of providers) provider.postAiState(state.busy, state.label);
   };
 
   const setupWatcher = () => {
@@ -425,7 +462,8 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     resolvePet(this.context, false).then((pet) => {
       if (pet) {
         this.showPet(pet);
-        this.postAiState(isAiActivityEnabled() && computeAiBusy());
+        const state = computeAiState();
+        this.postAiState(state.busy, state.label);
       }
     });
   }
@@ -459,8 +497,8 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: 'update-idle-weights', weights });
   }
 
-  postAiState(busy: boolean): void {
-    this.view?.webview.postMessage({ type: 'ai-state', busy });
+  postAiState(busy: boolean, label?: string): void {
+    this.view?.webview.postMessage({ type: 'ai-state', busy, label });
   }
 }
 

@@ -48,15 +48,18 @@ View** from the Command Palette does the same thing.
 
 ## Reacting to Claude Code activity
 
-If `codexPet.reactToAiActivity` is enabled (default: on), the pet plays a
-"busy" animation (the `review` sprite state) with a small speech-bubble
-"..." indicator while Claude Code is actively working, and returns to normal
-idle/walk behavior once it's done.
+If `claude-code` is listed in `codexPet.aiActivitySources` (it is by
+default), the pet plays a "busy" animation (the `review` sprite state) with a
+small speech bubble while Claude Code is actively working, and returns to
+normal idle/walk behavior once it's done. The bubble shows what it's doing
+when available — the current tool name (e.g. "Bash", "Edit") during tool use,
+or "Thinking" while a prompt is being processed.
 
 This works by watching status files in `~/.codex-pet/` (one JSON file per
 tool, e.g. `claude-code.json`, containing `{ "state": "busy" | "idle",
-"updatedAt": <ms> }`). A `busy` status older than 30s is treated as stale and
-ignored, so a crashed session can't leave the pet stuck.
+"updatedAt": <ms>, "label": <string | null> }`). A `busy` status older than
+30s is treated as stale and ignored, so a crashed session can't leave the pet
+stuck.
 
 Claude Code reports into this file via its
 [hooks](https://docs.claude.com/en/docs/claude-code/hooks) mechanism. The
@@ -69,7 +72,7 @@ Claude Code Hooks...**, or do it by hand by adding to
 {
   "hooks": {
     "PreToolUse": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy" }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy" }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy Thinking" }] }],
     "Stop": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code idle" }] }],
     "SessionEnd": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code idle" }] }]
   }
@@ -78,18 +81,22 @@ Claude Code Hooks...**, or do it by hand by adding to
 
 `report-status.sh` itself is (re)written to `~/.codex-pet/` by the extension
 on every activation, so it's always present once the extension has run once
-— the hooks above just need to call it.
+— the hooks above just need to call it. For `PreToolUse`, Claude Code pipes
+the hook's JSON payload (which includes `tool_name`) on stdin; the script
+picks that up automatically to label the bubble, unless an explicit label is
+passed as a third argument (as `UserPromptSubmit` does with `Thinking`).
 
 ## Reacting to GitHub Copilot activity (experimental)
 
 GitHub Copilot Chat has no hooks/lifecycle mechanism like Claude Code's, and
 VS Code doesn't yet expose a public API for observing Copilot Chat request
 status ([microsoft/vscode#310951](https://github.com/microsoft/vscode/issues/310951)
-is open but unshipped). So instead of a real signal, `codexPet.reactToCopilotActivity`
-(default: **off**) uses a heuristic: bursts of large or multi-part text-document
-edits look more like an agent streaming changes than someone typing key-by-key,
-so the extension treats those as "busy" and reports it into
-`~/.codex-pet/copilot.json` (same status-file protocol as Claude Code above).
+is open but unshipped). So instead of a real signal, adding `copilot` to
+`codexPet.aiActivitySources` (off by default) uses a heuristic: bursts of
+large or multi-part text-document edits look more like an agent streaming
+changes than someone typing key-by-key, so the extension treats those as
+"busy" and reports it into `~/.codex-pet/copilot.json` (same status-file
+protocol as Claude Code above, with a fixed "Copilot" label).
 
 This is a guess, not a real signal — it can also fire on pastes, snippet
 expansion, formatters, find/replace, or other bulk edits from any source, not
@@ -118,8 +125,8 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.moveChance`           | `0.5`   | Probability (0-1) of starting a move vs. a stationary animation each cycle.   |
 | `codexPet.minActionDuration`    | `1500`  | Minimum ms spent in one action before picking a new one.                     |
 | `codexPet.maxActionDuration`    | `3500`  | Maximum ms spent in one action before picking a new one.                     |
-| `codexPet.reactToAiActivity`    | `true`  | Play a busy animation + speech bubble while a connected AI tool (currently Claude Code) is working. See below. |
-| `codexPet.reactToCopilotActivity` | `false` | Experimental heuristic guess at GitHub Copilot Chat activity, since Copilot has no hooks API. See below. |
+| `codexPet.idleAnimationSpeed`   | `1`     | Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). Doesn't affect walk/run. |
+| `codexPet.aiActivitySources`    | `["claude-code"]` | Which AI tools trigger the busy animation + speech bubble: `claude-code`, `copilot` (experimental heuristic), both, or empty to disable. See below. |
 
 Timing settings (`walkSpeed`, `moveChance`, `min/maxActionDuration`) apply live
 to an already-open view — no reload needed. Changing `selectedPet` swaps the

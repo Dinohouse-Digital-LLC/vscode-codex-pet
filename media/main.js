@@ -7,11 +7,19 @@
   const { spriteUri, configUri } = window.CODEX_PET;
 
   const timing = Object.assign(
-    { walkSpeed: 40, moveChance: 0.5, minActionDuration: 1500, maxActionDuration: 3500, jumpCooldown: 5000 },
+    {
+      walkSpeed: 40,
+      moveChance: 0.5,
+      minActionDuration: 1500,
+      maxActionDuration: 3500,
+      jumpCooldown: 5000,
+      idleAnimationSpeed: 1,
+    },
     window.CODEX_PET.timing || {},
   );
 
   let aiBusy = false;
+  let aiLabel = '';
   let wasAiBusy = false;
   let userScale = Number(window.CODEX_PET.scale) || 1;
   let idleStateWeights = window.CODEX_PET.idleStateWeights || {};
@@ -22,6 +30,7 @@
     }
     if (event.data?.type === 'ai-state') {
       aiBusy = Boolean(event.data.busy);
+      aiLabel = event.data.label || '';
     }
     if (event.data?.type === 'update-scale') {
       userScale = Number(event.data.scale) || 1;
@@ -235,14 +244,20 @@
   function drawAiBubble(now) {
     if (!aiBusy) return;
 
-    const bubbleWidth = 34;
+    const dotCount = 1 + Math.floor((now / 400) % 3);
+    const text = aiLabel ? `${aiLabel} ${'.'.repeat(dotCount)}` : '.'.repeat(dotCount);
+
     const bubbleHeight = 20;
     const cx = petBox.x + petBox.w / 2;
     const bottomY = petBox.y - 6;
     const topY = bottomY - bubbleHeight;
-    const left = clamp(cx - bubbleWidth / 2, 2, canvas.width - bubbleWidth - 2);
 
     ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const bubbleWidth = clamp(textWidth + 16, 34, canvas.width - 4);
+    const left = clamp(cx - bubbleWidth / 2, 2, canvas.width - bubbleWidth - 2);
+
     ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
     roundRectPath(left, topY, bubbleWidth, bubbleHeight, 6);
     ctx.fill();
@@ -254,12 +269,10 @@
     ctx.closePath();
     ctx.fill();
 
-    const dotCount = 1 + Math.floor((now / 400) % 3);
     ctx.fillStyle = '#f0f0f0';
-    ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('.'.repeat(dotCount), left + bubbleWidth / 2, topY + bubbleHeight / 2 - 1);
+    ctx.fillText(text, left + bubbleWidth / 2, topY + bubbleHeight / 2 - 1);
     ctx.restore();
   }
 
@@ -342,8 +355,12 @@
     if (!state) return;
 
     frameTimer += dt;
+    const isIdleState = (config.idleStates || []).includes(currentState);
+    const speedMultiplier = isIdleState ? timing.idleAnimationSpeed || 1 : 1;
     const frameDuration =
-      currentState === 'jump' && reacting && jumpFrameDuration ? jumpFrameDuration : 1000 / state.fps;
+      currentState === 'jump' && reacting && jumpFrameDuration
+        ? jumpFrameDuration
+        : 1000 / state.fps / speedMultiplier;
     if (frameTimer >= frameDuration) {
       frameTimer = 0;
       frameIndex += 1;
