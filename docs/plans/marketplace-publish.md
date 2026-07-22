@@ -56,19 +56,16 @@ needs the new repo's real (public) URL.
       from the new location.
 
 ### Phase 2 — make the extension publishable
-- [ ] Remove `"private": true` from `package.json`.
-- [ ] Design or source a 128x128 PNG icon and add it as `package.json`'s
+- [x] Remove `"private": true` from `package.json`.
+- [x] Design or source a 128x128 PNG icon and add it as `package.json`'s
       top-level `icon` field (separate from the existing activity-bar SVG).
-- [ ] Update `repository.url` in `package.json` to the new standalone repo's
-      URL (from Phase 1), replacing the `git.andrewdeck.dev` /
-      `directory: vscode-codex-pet` fields (no `directory` needed once it's
-      not a subdirectory).
-- [ ] Add `*.vsix` to `.gitignore` and remove the stray
-      `vscode-codex-pet-0.0.1.vsix` / `-0.0.2.vsix` / `-0.0.3.vsix` build
-      artifacts already committed/sitting in the repo root.
-- [ ] Bump `version` in `package.json` if `0.0.3` was already used for a
-      prior local package/install cycle worth distinguishing from the first
-      Marketplace release.
+      Used `media/icons/marketplace-icon.png`, cropped from the cinder pet's
+      idle frame.
+- [x] Update `repository.url` in `package.json` to the new standalone repo's
+      URL (`https://github.com/TempusShift/vscode-codex-pet.git`).
+- [x] `*.vsix` already gitignored; removed the stray local `-0.0.1` through
+      `-0.0.4` build artifacts from the repo root.
+- [x] Bumped `version` to `0.1.0` for the first Marketplace release.
 
 ### Phase 3 — publisher account + credentials
 - [ ] Create (or verify) an Azure DevOps organization for Andrew.
