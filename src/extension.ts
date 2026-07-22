@@ -415,6 +415,7 @@ interface SessionStatusFile {
   updatedAt?: number;
   label?: string | null;
   cwd?: string | null;
+  title?: string | null;
 }
 
 function writeSessionStatus(
@@ -450,7 +451,12 @@ const HOOK_SCRIPT_CONTENTS = `#!/usr/bin/env bash
 # Claude Code pipes the hook's JSON payload on stdin; we pull "session_id" and
 # "cwd" out of it to key a per-session status file under sessions/, and fall
 # back to "tool_name" as a busy-event label (e.g. "Bash", "Edit") when none
-# was passed explicitly. "end" (SessionEnd) deletes the session's file.
+# was passed explicitly. "end" (SessionEnd) deletes the session's file. The
+# first UserPromptSubmit's "prompt" text is kept as a one-time "title" for the
+# session (not overwritten by later prompts), giving the waiting badge
+# something more identifying than the project name to show. This is a
+# best-effort sed extraction, not real JSON parsing, so a prompt containing a
+# literal quote/backslash can truncate early — acceptable for a label.
 dir="$(cd "$(dirname "$0")" && pwd)"
 sessions_dir="$dir/sessions"
 mkdir -p "$sessions_dir"
@@ -466,6 +472,7 @@ fi
 
 session_id="$(printf '%s' "$input" | sed -n 's/.*"session_id" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
 cwd="$(printf '%s' "$input" | sed -n 's/.*"cwd" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
+prompt="$(printf '%s' "$input" | sed -n 's/.*"prompt" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
 
 if [ -z "$label" ] && [ "$state" = "busy" ]; then
   label="$(printf '%s' "$input" | sed -n 's/.*"tool_name" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
@@ -479,6 +486,17 @@ if [ "$state" = "end" ]; then
   exit 0
 fi
 
+title=""
+if [ -f "$file" ]; then
+  title="$(sed -n 's/.*"title" *: *"\\([^"]*\\)".*/\\1/p' "$file" | head -1)"
+fi
+if [ -z "$title" ] && [ -n "$prompt" ]; then
+  title="$prompt"
+  if [ \${#title} -gt 60 ]; then
+    title="\${title:0:57}..."
+  fi
+fi
+
 label_json="null"
 if [ -n "$label" ]; then
   label_json="\\"$(printf '%s' "$label" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
@@ -489,7 +507,12 @@ if [ -n "$cwd" ]; then
   cwd_json="\\"$(printf '%s' "$cwd" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
 fi
 
-printf '{"source":"%s","state":"%s","updatedAt":%s,"label":%s,"cwd":%s}' "$source" "$state" "$(date +%s000)" "$label_json" "$cwd_json" > "$file"
+title_json="null"
+if [ -n "$title" ]; then
+  title_json="\\"$(printf '%s' "$title" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
+fi
+
+printf '{"source":"%s","state":"%s","updatedAt":%s,"label":%s,"cwd":%s,"title":%s}' "$source" "$state" "$(date +%s000)" "$label_json" "$cwd_json" "$title_json" > "$file"
 `;
 
 function ensureHookScript(): void {
@@ -509,6 +532,10 @@ interface HookEntry {
 const CLAUDE_HOOK_COMMANDS: { event: string; command: string }[] = [
   { event: 'PreToolUse', command: '~/.codex-pet/report-status.sh claude-code busy' },
   { event: 'UserPromptSubmit', command: '~/.codex-pet/report-status.sh claude-code busy Thinking' },
+  // Notification fires for permission prompts and idle-waiting-for-input, not
+  // just Stop — without it, a session blocked on a permission dialog never
+  // reports "waiting" since it never reaches Stop.
+  { event: 'Notification', command: '~/.codex-pet/report-status.sh claude-code waiting' },
   { event: 'Stop', command: '~/.codex-pet/report-status.sh claude-code waiting' },
   { event: 'SessionEnd', command: '~/.codex-pet/report-status.sh claude-code end' },
 ];
@@ -664,7 +691,8 @@ function computeAiState(): AiState {
       if (!busyLabel) busyLabel = data.label || SOURCE_DEFAULT_LABELS[data.source] || data.source;
     } else if (data.state === 'waiting') {
       if (age > waitingStaleMs) continue;
-      const label = data.cwd ? path.basename(data.cwd) : SOURCE_DEFAULT_LABELS[data.source] || data.source;
+      const label =
+        data.title || (data.cwd ? path.basename(data.cwd) : SOURCE_DEFAULT_LABELS[data.source] || data.source);
       waiting.push({ id: file, label });
     }
   }

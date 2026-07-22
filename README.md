@@ -55,16 +55,19 @@ normal idle/walk behavior once it's done. The bubble shows what it's doing
 when available — the current tool name (e.g. "Bash", "Edit") during tool use,
 or "Thinking" while a prompt is being processed.
 
-Separately, whenever one or more Claude Code sessions have finished
-responding and are waiting on you for a prompt or action, a small red count
-badge appears on the pet; hovering it shows which session(s) (by workspace
-folder name) are waiting.
+Separately, whenever one or more Claude Code sessions need something from you
+— finished responding and waiting on a prompt, or blocked on a permission
+dialog — a small red count badge appears on the pet; hovering it shows which
+session(s) are waiting, labeled with the session's first prompt (truncated to
+60 chars) if available, falling back to the workspace folder name otherwise —
+there's no real "chat title" to read from Claude Code, so the first prompt is
+the closest stand-in.
 
 This works by watching per-session status files under
 `~/.codex-pet/sessions/` (one JSON file per session, e.g.
 `claude-code-<session-id>.json`, containing `{ "source", "state": "busy" |
 "waiting", "updatedAt": <ms>, "label": <string | null>, "cwd": <string |
-null> }`). A `busy` status older than 30s is treated as stale and ignored, so
+null>, "title": <string | null> }`). A `busy` status older than 30s is treated as stale and ignored, so
 a crashed session can't leave the pet stuck animating. A `waiting` status can
 sit for much longer before being dropped (default 4 hours, via
 `codexPet.waitingStaleMinutes`) since a session can legitimately wait on a human
@@ -83,6 +86,7 @@ Claude Code Hooks...**, or do it by hand by adding to
   "hooks": {
     "PreToolUse": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy" }] }],
     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy Thinking" }] }],
+    "Notification": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code waiting" }] }],
     "Stop": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code waiting" }] }],
     "SessionEnd": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code end" }] }]
   }
@@ -93,10 +97,13 @@ Claude Code Hooks...**, or do it by hand by adding to
 on every activation, so it's always present once the extension has run once
 — the hooks above just need to call it. Claude Code pipes the hook's JSON
 payload (which includes `session_id`, `cwd`, and for `PreToolUse`,
-`tool_name`) on stdin; the script picks those up automatically to key each
-session's file and label the bubble, unless an explicit label is passed as a
-third argument (as `UserPromptSubmit` does with `Thinking`). `end`
-(`SessionEnd`) deletes that session's file instead of writing a state.
+`tool_name`; for `UserPromptSubmit`, `prompt`) on stdin; the script picks
+those up automatically to key each session's file and label the bubble,
+unless an explicit label is passed as a third argument (as
+`UserPromptSubmit` does with `Thinking`). The first `UserPromptSubmit`'s
+`prompt` text is kept as that session's `title` from then on, ignoring later
+prompts, so the waiting badge's tooltip stays stable across a conversation.
+`end` (`SessionEnd`) deletes that session's file instead of writing a state.
 
 If you installed hooks before this per-session tracking landed, re-run
 **Codex Pet: Install Claude Code Hooks...** — the old `Stop`/`SessionEnd`
