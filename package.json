@@ -16,7 +16,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -152,14 +154,55 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["claude-code", "copilot"],
+            "enum": [
+              "claude-code",
+              "copilot"
+            ],
             "enumDescriptions": [
               "Claude Code, via hooks reporting to ~/.codex-pet/.",
               "Experimental: guess when GitHub Copilot Chat is actively editing files, using an editor-heuristic (VS Code has no public API for this yet). Can misfire on pastes, formatting, or other bulk edits."
             ]
           },
-          "default": ["claude-code"],
+          "default": [
+            "claude-code"
+          ],
           "description": "Which AI tools the pet plays a busy animation for while they're actively working. Leave empty to disable AI-activity reactions entirely."
+        },
+        "codexPet.waitingStaleMs": {
+          "type": "number",
+          "default": 14400000,
+          "minimum": 0,
+          "description": "How long (ms) a session can sit in the 'waiting for you' state before it's treated as stale and dropped from the pet's waiting-session list. Only cleans up sessions that crashed after finishing a response but before ending; a normally-waiting session isn't affected by how long a human takes to reply."
+        },
+        "codexPet.xpEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Give the pet XP and levels based on coding activity (AI tool activity, editor edits, terminal use, git commits, and clicks)."
+        },
+        "codexPet.petGrowthEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Grow the pet's size as it levels up, from petGrowthMinScale at level 1 up to petGrowthMaxScale at petGrowthMaxLevel. Both bounds are multipliers of codexPet.petScale. Requires codexPet.xpEnabled."
+        },
+        "codexPet.petGrowthMinScale": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0.1,
+          "maximum": 1,
+          "description": "Size multiplier (of codexPet.petScale) the pet starts at when petGrowthEnabled is on."
+        },
+        "codexPet.petGrowthMaxScale": {
+          "type": "number",
+          "default": 1.5,
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Size multiplier (of codexPet.petScale) the pet reaches at petGrowthMaxLevel when petGrowthEnabled is on."
+        },
+        "codexPet.petGrowthMaxLevel": {
+          "type": "number",
+          "default": 20,
+          "minimum": 2,
+          "description": "Level at which the pet reaches petGrowthMaxScale. Growth is linear between level 1 and this level, then caps."
         }
       }
     }
@@ -169,7 +212,8 @@
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package --no-rewrite-relative-links",
-    "install-extension": "npm run package && code --install-extension $(node -p \"require('./package.json').name+'-'+require('./package.json').version+'.vsix'\")"
+    "install-extension": "npm run package && code --install-extension $(node -p \"require('./package.json').name+'-'+require('./package.json').version+'.vsix'\")",
+    "release": "node scripts/release.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -1,4 +1,5 @@
 (function () {
+  const vscodeApi = acquireVsCodeApi();
   const canvas = document.getElementById('pet-canvas');
   const ctx = canvas.getContext('2d');
   const stage = document.getElementById('pet-stage');
@@ -21,8 +22,20 @@
   let aiBusy = false;
   let aiLabel = '';
   let wasAiBusy = false;
+  let waitingSessions = [];
+  let hoveringWaitingBadge = false;
+  let waitingBadgeBox = null;
   let userScale = Number(window.CODEX_PET.scale) || 1;
   let idleStateWeights = window.CODEX_PET.idleStateWeights || {};
+
+  let petLevel = null;
+  let levelUpFlash = 0;
+  const LEVEL_UP_FLASH_DURATION = 1500;
+
+  let petGrowth = Object.assign(
+    { enabled: false, minScale: 0.7, maxScale: 1.5, maxLevel: 20 },
+    window.CODEX_PET.petGrowth || {},
+  );
 
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'update-timing') {
@@ -31,6 +44,7 @@
     if (event.data?.type === 'ai-state') {
       aiBusy = Boolean(event.data.busy);
       aiLabel = event.data.label || '';
+      waitingSessions = Array.isArray(event.data.waiting) ? event.data.waiting : [];
     }
     if (event.data?.type === 'update-scale') {
       userScale = Number(event.data.scale) || 1;
@@ -38,7 +52,23 @@
     if (event.data?.type === 'update-idle-weights') {
       idleStateWeights = event.data.weights || {};
     }
+    if (event.data?.type === 'xp-update') {
+      petLevel = event.data.level;
+      if (event.data.leveledUp) celebrateLevelUp();
+    }
+    if (event.data?.type === 'update-pet-growth') {
+      petGrowth = Object.assign({}, petGrowth, event.data.growth);
+    }
   });
+
+  function celebrateLevelUp() {
+    levelUpFlash = LEVEL_UP_FLASH_DURATION;
+    if (config?.states?.jump) {
+      activateJump(petBox.y - JUMP_BASE_HEIGHT * 1.5);
+    }
+    spawnHeart(petBox.x + petBox.w / 2, petBox.y);
+    spawnHeart(petBox.x + petBox.w / 2, petBox.y);
+  }
 
   let config = null;
   let spriteImage = null;
@@ -71,8 +101,15 @@
     return min + Math.random() * (max - min);
   }
 
+  function getGrowthMultiplier() {
+    if (!petGrowth.enabled || petLevel === null) return 1;
+    const maxLevel = Math.max(petGrowth.maxLevel, 2);
+    const t = clamp((petLevel - 1) / (maxLevel - 1), 0, 1);
+    return petGrowth.minScale + t * (petGrowth.maxScale - petGrowth.minScale);
+  }
+
   function getScale() {
-    return (config.scale || 1) * userScale;
+    return (config.scale || 1) * userScale * getGrowthMultiplier();
   }
 
   function pickWeighted(states) {
@@ -276,6 +313,79 @@
     ctx.restore();
   }
 
+  function drawWaitingBadge() {
+    if (waitingSessions.length === 0) {
+      waitingBadgeBox = null;
+      return;
+    }
+
+    const radius = 9;
+    const cx = petBox.x + radius + 2;
+    const cy = petBox.y + radius + 2;
+    waitingBadgeBox = { x: cx - radius, y: cy - radius, w: radius * 2, h: radius * 2 };
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(220, 70, 60, 0.95)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(waitingSessions.length), cx, cy + 1);
+    ctx.restore();
+  }
+
+  function drawWaitingTooltip() {
+    if (!hoveringWaitingBadge || waitingSessions.length === 0 || !waitingBadgeBox) return;
+
+    const text = waitingSessions.map((s) => s.label).join(', ');
+    const bubbleHeight = 20;
+    const cx = waitingBadgeBox.x + waitingBadgeBox.w / 2;
+    const bottomY = waitingBadgeBox.y - 4;
+    const topY = bottomY - bubbleHeight;
+
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const bubbleWidth = clamp(textWidth + 16, 34, canvas.width - 4);
+    const left = clamp(cx - bubbleWidth / 2, 2, canvas.width - bubbleWidth - 2);
+
+    ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+    roundRectPath(left, topY, bubbleWidth, bubbleHeight, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#f0f0f0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, left + bubbleWidth / 2, topY + bubbleHeight / 2 - 1);
+    ctx.restore();
+  }
+
+  function drawLevelBadge() {
+    if (petLevel === null) return;
+
+    const flashing = levelUpFlash > 0;
+    const radius = flashing ? 11 : 9;
+    const cx = petBox.x + petBox.w - radius - 2;
+    const cy = petBox.y + radius + 2;
+
+    ctx.save();
+    ctx.fillStyle = flashing ? 'rgba(255, 205, 60, 0.95)' : 'rgba(20, 20, 20, 0.75)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = flashing ? '#3a2a00' : '#f0f0f0';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(petLevel), cx, cy + 1);
+    ctx.restore();
+  }
+
   function spawnHeart(cx, topY) {
     hearts.push({ x: cx + (Math.random() * 20 - 10), y: topY, life: 0, duration: 900 });
   }
@@ -307,6 +417,7 @@
     }
     triggerReaction();
     spawnHeart(petBox.x + petBox.w / 2, petBox.y);
+    vscodeApi.postMessage({ type: 'pet-click' });
   });
 
   canvas.addEventListener('mousemove', (event) => {
@@ -317,6 +428,14 @@
       cx >= petBox.x && cx <= petBox.x + petBox.w && cy >= petBox.y && cy <= petBox.y + petBox.h;
     canvas.style.cursor = hovering ? 'pointer' : 'default';
 
+    hoveringWaitingBadge = Boolean(
+      waitingBadgeBox &&
+        cx >= waitingBadgeBox.x &&
+        cx <= waitingBadgeBox.x + waitingBadgeBox.w &&
+        cy >= waitingBadgeBox.y &&
+        cy <= waitingBadgeBox.y + waitingBadgeBox.h,
+    );
+
     cursorX = cx;
     cursorY = cy;
     cursorActive = true;
@@ -326,6 +445,7 @@
     cursorActive = false;
     cursorX = null;
     cursorY = null;
+    hoveringWaitingBadge = false;
   });
 
   function drawPlaceholder(scale) {
@@ -395,6 +515,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (jumpCooldown > 0) jumpCooldown -= dt;
+    if (levelUpFlash > 0) levelUpFlash -= dt;
 
     if (reacting) {
       stateTimer += dt;
@@ -439,6 +560,9 @@
 
     drawSprite(dt);
     drawAiBubble(now);
+    drawLevelBadge();
+    drawWaitingBadge();
+    drawWaitingTooltip();
     updateHearts(dt);
     drawHearts();
 

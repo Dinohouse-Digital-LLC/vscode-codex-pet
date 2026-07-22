@@ -1,2 +1,3 @@
 - [ ] XP / leveling system — [plan](docs/plans/xp-leveling-system.md)
 - [ ] Multiple pets at once — [plan](docs/plans/multiple-pets.md)
+- [ ] Track which AI session(s) need attention — [plan](docs/plans/session-attention-tracking.md)

@@ -59,8 +59,235 @@ function getIdleStateWeights(): Record<string, number> {
     .get<Record<string, number>>('idleStateWeights', {});
 }
 
+function isXpEnabled(): boolean {
+  return vscode.workspace.getConfiguration('codexPet').get<boolean>('xpEnabled', true);
+}
+
+interface PetGrowthConfig {
+  enabled: boolean;
+  minScale: number;
+  maxScale: number;
+  maxLevel: number;
+}
+
+function getPetGrowthConfig(): PetGrowthConfig {
+  const config = vscode.workspace.getConfiguration('codexPet');
+  return {
+    enabled: config.get<boolean>('petGrowthEnabled', false),
+    minScale: config.get<number>('petGrowthMinScale', 0.7),
+    maxScale: config.get<number>('petGrowthMaxScale', 1.5),
+    maxLevel: config.get<number>('petGrowthMaxLevel', 20),
+  };
+}
+
+const PET_GROWTH_SETTINGS = [
+  'codexPet.petGrowthEnabled',
+  'codexPet.petGrowthMinScale',
+  'codexPet.petGrowthMaxScale',
+  'codexPet.petGrowthMaxLevel',
+];
+
 function getUserPetsDir(context: vscode.ExtensionContext): vscode.Uri {
   return vscode.Uri.joinPath(context.globalStorageUri, 'pets');
+}
+
+// XP / leveling: per-pet-id progress persisted under globalStorageUri (survives
+// extension updates, unlike anything under context.extensionUri). `xp` is the
+// only authoritative field; `level` is a cached convenience value recomputed
+// from xp on every award so it never drifts out of sync.
+interface XpRecord {
+  xp: number;
+  level: number;
+  lastUpdated: number;
+}
+
+function getXpFilePath(context: vscode.ExtensionContext): vscode.Uri {
+  return vscode.Uri.joinPath(context.globalStorageUri, 'xp.json');
+}
+
+async function loadXpState(context: vscode.ExtensionContext): Promise<Record<string, XpRecord>> {
+  try {
+    const bytes = await vscode.workspace.fs.readFile(getXpFilePath(context));
+    return JSON.parse(Buffer.from(bytes).toString('utf8'));
+  } catch {
+    return {};
+  }
+}
+
+async function saveXpState(
+  context: vscode.ExtensionContext,
+  state: Record<string, XpRecord>,
+): Promise<void> {
+  try {
+    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+    await vscode.workspace.fs.writeFile(
+      getXpFilePath(context),
+      Buffer.from(JSON.stringify(state, null, 2)),
+    );
+  } catch {
+    // Best-effort: if this fails, XP just won't persist across sessions.
+  }
+}
+
+// Leveling curve: total XP required to reach level n. Tune once real XP rates
+// are in place; only `xp` is authoritative, level is derived from it.
+function xpForLevel(n: number): number {
+  return 50 * Math.pow(n, 1.5);
+}
+
+function levelForXp(xp: number): number {
+  let level = 1;
+  while (xpForLevel(level + 1) <= xp) level++;
+  return level;
+}
+
+const XP_PER_ACTIVE_MINUTE = 2;
+const XP_PER_COMMIT = 15;
+const XP_PER_CLICK = 1;
+const CLICK_XP_MIN_INTERVAL_MS = 4000;
+const ACTIVE_WINDOW_MS = 60000;
+
+// Awards XP for real coding activity: any minute containing AI-tool activity,
+// an editor edit, or terminal use counts once as an "active minute" (rather
+// than per-keystroke/per-command, which would be trivially gameable and noisy
+// to listen for). Git commits are a discrete checkpoint instead, so they get a
+// flat one-off bonus. Clicks are a small supplementary source, rate-limited so
+// spam-clicking can't dominate.
+class XpManager {
+  private state: Record<string, XpRecord> = {};
+  private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastActivityAt = 0;
+  private lastClickXpAt = 0;
+  currentPetId: string | undefined;
+
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly providers: CodexPetViewProvider[],
+  ) {}
+
+  async load(): Promise<void> {
+    this.state = await loadXpState(this.context);
+  }
+
+  private scheduleSave(): void {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = undefined;
+      saveXpState(this.context, this.state);
+    }, 2000);
+  }
+
+  private getRecord(petId: string): XpRecord {
+    let record = this.state[petId];
+    if (!record) {
+      record = { xp: 0, level: 1, lastUpdated: Date.now() };
+      this.state[petId] = record;
+    }
+    return record;
+  }
+
+  private award(petId: string, amount: number): void {
+    if (!isXpEnabled()) return;
+    const record = this.getRecord(petId);
+    const prevLevel = record.level;
+    record.xp += amount;
+    record.level = levelForXp(record.xp);
+    record.lastUpdated = Date.now();
+    this.scheduleSave();
+    if (petId === this.currentPetId) {
+      for (const provider of this.providers) {
+        provider.postXpUpdate(record.xp, record.level, record.level > prevLevel);
+      }
+    }
+  }
+
+  setCurrentPet(petId: string): void {
+    this.currentPetId = petId;
+    const record = this.getRecord(petId);
+    for (const provider of this.providers) provider.postXpUpdate(record.xp, record.level, false);
+  }
+
+  markActive(): void {
+    this.lastActivityAt = Date.now();
+  }
+
+  awardClick(): void {
+    if (!this.currentPetId) return;
+    const now = Date.now();
+    if (now - this.lastClickXpAt < CLICK_XP_MIN_INTERVAL_MS) return;
+    this.lastClickXpAt = now;
+    this.award(this.currentPetId, XP_PER_CLICK);
+  }
+
+  awardCommit(): void {
+    if (this.currentPetId) this.award(this.currentPetId, XP_PER_COMMIT);
+  }
+
+  start(): vscode.Disposable {
+    const interval = setInterval(() => {
+      if (!this.currentPetId) return;
+      if (Date.now() - this.lastActivityAt <= ACTIVE_WINDOW_MS) {
+        this.award(this.currentPetId, XP_PER_ACTIVE_MINUTE);
+      }
+    }, ACTIVE_WINDOW_MS);
+
+    return new vscode.Disposable(() => {
+      clearInterval(interval);
+      if (this.saveTimer) {
+        clearTimeout(this.saveTimer);
+        this.saveTimer = undefined;
+      }
+      saveXpState(this.context, this.state);
+    });
+  }
+}
+
+function startEditorAndTerminalActivityWatcher(xpManager: XpManager): vscode.Disposable {
+  const disposables: vscode.Disposable[] = [];
+
+  disposables.push(
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (event.document.uri.scheme !== 'file') return;
+      if (event.contentChanges.length === 0) return;
+      xpManager.markActive();
+    }),
+  );
+
+  const onDidStartTerminalShellExecution = (
+    vscode.window as unknown as {
+      onDidStartTerminalShellExecution?: (listener: () => void) => vscode.Disposable;
+    }
+  ).onDidStartTerminalShellExecution;
+
+  if (onDidStartTerminalShellExecution) {
+    disposables.push(onDidStartTerminalShellExecution(() => xpManager.markActive()));
+  } else {
+    disposables.push(vscode.window.onDidOpenTerminal(() => xpManager.markActive()));
+    disposables.push(vscode.window.onDidCloseTerminal(() => xpManager.markActive()));
+  }
+
+  return vscode.Disposable.from(...disposables);
+}
+
+function startGitCommitWatcher(xpManager: XpManager): vscode.Disposable {
+  const watchers: fs.FSWatcher[] = [];
+
+  const watchRepo = (repoRoot: string) => {
+    const gitLogsHead = path.join(repoRoot, '.git', 'logs', 'HEAD');
+    try {
+      watchers.push(fs.watch(gitLogsHead, { persistent: false }, () => xpManager.awardCommit()));
+    } catch {
+      // No .git/logs/HEAD (not a repo, or shallow clone without reflog) - skip.
+    }
+  };
+
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    if (folder.uri.scheme === 'file') watchRepo(folder.uri.fsPath);
+  }
+
+  return new vscode.Disposable(() => {
+    for (const watcher of watchers) watcher.close();
+  });
 }
 
 async function readPetsFrom(petsDir: vscode.Uri): Promise<Pet[]> {
@@ -155,38 +382,84 @@ async function resolvePet(
   return pickPet(context, pets);
 }
 
-// AI activity tracking: external tools (Claude Code hooks, etc.) report busy/idle
-// state by writing "<source>.json" files into this directory. We watch it and
-// treat the pet as "busy" whenever any source is busy and recently reported in.
+// AI activity tracking: external tools (Claude Code hooks, etc.) report
+// per-session busy/waiting state by writing "<source>-<sessionId>.json" files
+// into AI_STATUS_SESSIONS_DIR. We watch that directory and aggregate across
+// all sessions: the pet is "busy" whenever any session recently reported
+// busy, and separately tracks which sessions are "waiting" (done responding,
+// needs a prompt) so the UI can call those out individually.
 const AI_STATUS_DIR = path.join(os.homedir(), '.codex-pet');
+const AI_STATUS_SESSIONS_DIR = path.join(AI_STATUS_DIR, 'sessions');
 const AI_STATUS_STALE_MS = 30000;
 
-function writeAiStatus(source: string, state: 'busy' | 'idle', label?: string): void {
+interface SessionStatusFile {
+  source?: string;
+  state?: string;
+  updatedAt?: number;
+  label?: string | null;
+  cwd?: string | null;
+}
+
+function writeSessionStatus(
+  source: string,
+  sessionId: string,
+  state: 'busy' | 'waiting',
+  label?: string,
+  cwd?: string,
+): void {
   try {
-    fs.mkdirSync(AI_STATUS_DIR, { recursive: true });
+    fs.mkdirSync(AI_STATUS_SESSIONS_DIR, { recursive: true });
     fs.writeFileSync(
-      path.join(AI_STATUS_DIR, `${source}.json`),
-      JSON.stringify({ state, updatedAt: Date.now(), label: label ?? null }),
+      path.join(AI_STATUS_SESSIONS_DIR, `${source}-${sessionId}.json`),
+      JSON.stringify({ source, state, updatedAt: Date.now(), label: label ?? null, cwd: cwd ?? null }),
     );
   } catch {
     // Best-effort: if this fails, AI-activity reactions just won't be available.
   }
 }
+
+function clearSessionStatus(source: string, sessionId: string): void {
+  try {
+    fs.unlinkSync(path.join(AI_STATUS_SESSIONS_DIR, `${source}-${sessionId}.json`));
+  } catch {
+    // Best-effort: file may already be gone.
+  }
+}
+
 const HOOK_SCRIPT_PATH = path.join(AI_STATUS_DIR, 'report-status.sh');
 const HOOK_SCRIPT_CONTENTS = `#!/usr/bin/env bash
 # Installed by the Codex Pet VS Code extension. Reports AI tool activity so the
-# pet can react. Usage: report-status.sh <source> <busy|idle> [label]
-# For busy events Claude Code pipes the hook's JSON payload on stdin; if no
-# explicit label was passed, pull "tool_name" out of it so the pet can show
-# what it's doing (e.g. "Bash", "Edit") instead of a generic busy indicator.
+# pet can react. Usage: report-status.sh <source> <busy|waiting|end> [label]
+# Claude Code pipes the hook's JSON payload on stdin; we pull "session_id" and
+# "cwd" out of it to key a per-session status file under sessions/, and fall
+# back to "tool_name" as a busy-event label (e.g. "Bash", "Edit") when none
+# was passed explicitly. "end" (SessionEnd) deletes the session's file.
 dir="$(cd "$(dirname "$0")" && pwd)"
+sessions_dir="$dir/sessions"
+mkdir -p "$sessions_dir"
+
 source="$1"
 state="$2"
 label="$3"
 
-if [ -z "$label" ] && [ "$state" = "busy" ] && [ ! -t 0 ]; then
+input=""
+if [ ! -t 0 ]; then
   input="$(cat 2>/dev/null)"
+fi
+
+session_id="$(printf '%s' "$input" | sed -n 's/.*"session_id" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
+cwd="$(printf '%s' "$input" | sed -n 's/.*"cwd" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
+
+if [ -z "$label" ] && [ "$state" = "busy" ]; then
   label="$(printf '%s' "$input" | sed -n 's/.*"tool_name" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
+fi
+
+session_id="\${session_id:-$source}"
+file="$sessions_dir/$source-$session_id.json"
+
+if [ "$state" = "end" ]; then
+  rm -f "$file"
+  exit 0
 fi
 
 label_json="null"
@@ -194,7 +467,12 @@ if [ -n "$label" ]; then
   label_json="\\"$(printf '%s' "$label" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
 fi
 
-printf '{"state":"%s","updatedAt":%s,"label":%s}' "$state" "$(date +%s000)" "$label_json" > "$dir/$source.json"
+cwd_json="null"
+if [ -n "$cwd" ]; then
+  cwd_json="\\"$(printf '%s' "$cwd" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
+fi
+
+printf '{"source":"%s","state":"%s","updatedAt":%s,"label":%s,"cwd":%s}' "$source" "$state" "$(date +%s000)" "$label_json" "$cwd_json" > "$file"
 `;
 
 function ensureHookScript(): void {
@@ -214,8 +492,8 @@ interface HookEntry {
 const CLAUDE_HOOK_COMMANDS: { event: string; command: string }[] = [
   { event: 'PreToolUse', command: '~/.codex-pet/report-status.sh claude-code busy' },
   { event: 'UserPromptSubmit', command: '~/.codex-pet/report-status.sh claude-code busy Thinking' },
-  { event: 'Stop', command: '~/.codex-pet/report-status.sh claude-code idle' },
-  { event: 'SessionEnd', command: '~/.codex-pet/report-status.sh claude-code idle' },
+  { event: 'Stop', command: '~/.codex-pet/report-status.sh claude-code waiting' },
+  { event: 'SessionEnd', command: '~/.codex-pet/report-status.sh claude-code end' },
 ];
 
 function hookArrayHasCommand(entries: HookEntry[] | undefined, command: string): boolean {
@@ -312,30 +590,68 @@ const SOURCE_DEFAULT_LABELS: Record<string, string> = {
   copilot: 'Copilot',
 };
 
-interface AiSourceStatus {
-  busy: boolean;
+interface WaitingSession {
+  id: string;
   label: string;
 }
 
-function readAiSourceStatus(source: string): AiSourceStatus | undefined {
-  try {
-    const bytes = fs.readFileSync(path.join(AI_STATUS_DIR, `${source}.json`), 'utf8');
-    const data = JSON.parse(bytes) as { state?: string; updatedAt?: number; label?: string };
-    if (data.state !== 'busy') return undefined;
-    if (typeof data.updatedAt !== 'number') return undefined;
-    if (Date.now() - data.updatedAt > AI_STATUS_STALE_MS) return undefined;
-    return { busy: true, label: data.label || SOURCE_DEFAULT_LABELS[source] || source };
-  } catch {
-    return undefined;
-  }
+interface AiState {
+  busy: boolean;
+  label?: string;
+  waiting: WaitingSession[];
 }
 
-function computeAiState(): { busy: boolean; label?: string } {
-  for (const source of getAiActivitySources()) {
-    const status = readAiSourceStatus(source);
-    if (status?.busy) return status;
+function getWaitingStaleMs(): number {
+  return vscode.workspace
+    .getConfiguration('codexPet')
+    .get<number>('waitingStaleMs', 4 * 60 * 60 * 1000);
+}
+
+function readSessionStatusFiles(): { file: string; data: SessionStatusFile }[] {
+  let names: string[];
+  try {
+    names = fs.readdirSync(AI_STATUS_SESSIONS_DIR);
+  } catch {
+    return [];
   }
-  return { busy: false };
+
+  const results: { file: string; data: SessionStatusFile }[] = [];
+  for (const name of names) {
+    if (!name.endsWith('.json')) continue;
+    try {
+      const raw = fs.readFileSync(path.join(AI_STATUS_SESSIONS_DIR, name), 'utf8');
+      results.push({ file: name, data: JSON.parse(raw) as SessionStatusFile });
+    } catch {
+      continue;
+    }
+  }
+  return results;
+}
+
+function computeAiState(): AiState {
+  const sources = new Set(getAiActivitySources());
+  const now = Date.now();
+  const waitingStaleMs = getWaitingStaleMs();
+
+  let busyLabel: string | undefined;
+  const waiting: WaitingSession[] = [];
+
+  for (const { file, data } of readSessionStatusFiles()) {
+    if (!data.source || !sources.has(data.source)) continue;
+    if (typeof data.updatedAt !== 'number') continue;
+    const age = now - data.updatedAt;
+
+    if (data.state === 'busy') {
+      if (age > AI_STATUS_STALE_MS) continue;
+      if (!busyLabel) busyLabel = data.label || SOURCE_DEFAULT_LABELS[data.source] || data.source;
+    } else if (data.state === 'waiting') {
+      if (age > waitingStaleMs) continue;
+      const label = data.cwd ? path.basename(data.cwd) : SOURCE_DEFAULT_LABELS[data.source] || data.source;
+      waiting.push({ id: file, label });
+    }
+  }
+
+  return { busy: Boolean(busyLabel), label: busyLabel, waiting };
 }
 
 function getAiActivitySources(): string[] {
@@ -371,9 +687,9 @@ function startCopilotActivityHeuristic(): vscode.Disposable {
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
   const markBusy = () => {
-    writeAiStatus('copilot', 'busy', SOURCE_DEFAULT_LABELS.copilot);
+    writeSessionStatus('copilot', 'copilot', 'busy', SOURCE_DEFAULT_LABELS.copilot);
     if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => writeAiStatus('copilot', 'idle'), COPILOT_HEURISTIC_IDLE_MS);
+    idleTimer = setTimeout(() => clearSessionStatus('copilot', 'copilot'), COPILOT_HEURISTIC_IDLE_MS);
   };
 
   const subscription = vscode.workspace.onDidChangeTextDocument((event) => {
@@ -387,24 +703,32 @@ function startCopilotActivityHeuristic(): vscode.Disposable {
   });
 }
 
-function startAiActivityWatcher(providers: CodexPetViewProvider[]): vscode.Disposable {
+function startAiActivityWatcher(
+  providers: CodexPetViewProvider[],
+  xpManager: XpManager,
+): vscode.Disposable {
   let lastKey: string | undefined;
   let watcher: fs.FSWatcher | undefined;
   let disposed = false;
 
   const broadcast = () => {
     const state = computeAiState();
-    const key = `${state.busy}:${state.label ?? ''}`;
+    if (state.busy) xpManager.markActive();
+    const waitingKey = state.waiting
+      .map((w) => `${w.id}:${w.label}`)
+      .sort()
+      .join(',');
+    const key = `${state.busy}:${state.label ?? ''}:${waitingKey}`;
     if (key === lastKey) return;
     lastKey = key;
-    for (const provider of providers) provider.postAiState(state.busy, state.label);
+    for (const provider of providers) provider.postAiState(state.busy, state.label, state.waiting);
   };
 
   const setupWatcher = () => {
     watcher?.close();
     try {
-      fs.mkdirSync(AI_STATUS_DIR, { recursive: true });
-      watcher = fs.watch(AI_STATUS_DIR, { persistent: false }, () => broadcast());
+      fs.mkdirSync(AI_STATUS_SESSIONS_DIR, { recursive: true });
+      watcher = fs.watch(AI_STATUS_SESSIONS_DIR, { persistent: false }, () => broadcast());
     } catch {
       watcher = undefined;
     }
@@ -452,6 +776,7 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly containerCommand: string,
+    private readonly xpManager: XpManager,
   ) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -459,11 +784,14 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     webviewView.onDidDispose(() => {
       this.view = undefined;
     });
+    webviewView.webview.onDidReceiveMessage((message) => {
+      if (message?.type === 'pet-click') this.xpManager.awardClick();
+    });
     resolvePet(this.context, false).then((pet) => {
       if (pet) {
         this.showPet(pet);
         const state = computeAiState();
-        this.postAiState(state.busy, state.label);
+        this.postAiState(state.busy, state.label, state.waiting);
       }
     });
   }
@@ -483,6 +811,7 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
       ],
     };
     this.view.webview.html = getWebviewHtml(this.view.webview, this.context.extensionUri, pet);
+    this.xpManager.setCurrentPet(pet.manifest.id);
   }
 
   postTimingUpdate(timing: TimingConfig): void {
@@ -497,29 +826,45 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: 'update-idle-weights', weights });
   }
 
-  postAiState(busy: boolean, label?: string): void {
-    this.view?.webview.postMessage({ type: 'ai-state', busy, label });
+  postAiState(busy: boolean, label?: string, waiting?: WaitingSession[]): void {
+    this.view?.webview.postMessage({ type: 'ai-state', busy, label, waiting: waiting ?? [] });
+  }
+
+  postXpUpdate(xp: number, level: number, leveledUp: boolean): void {
+    this.view?.webview.postMessage({ type: 'xp-update', xp, level, leveledUp });
+  }
+
+  postPetGrowthUpdate(growth: PetGrowthConfig): void {
+    this.view?.webview.postMessage({ type: 'update-pet-growth', growth });
   }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
+  const providers: CodexPetViewProvider[] = [];
+  const xpManager = new XpManager(context, providers);
   const sidebarProvider = new CodexPetViewProvider(
     context,
     'workbench.view.extension.codexPetContainer',
+    xpManager,
   );
   const panelProvider = new CodexPetViewProvider(
     context,
     'workbench.view.extension.codexPetPanelContainer',
+    xpManager,
   );
-  const providers = [sidebarProvider, panelProvider];
+  providers.push(sidebarProvider, panelProvider);
 
   updateLocationContext();
   ensureHookScript();
   maybePromptToInstallClaudeCodeHooks(context);
+  await xpManager.load();
 
   context.subscriptions.push(
-    startAiActivityWatcher(providers),
+    xpManager.start(),
+    startAiActivityWatcher(providers, xpManager),
     startCopilotActivityHeuristic(),
+    startEditorAndTerminalActivityWatcher(xpManager),
+    startGitCommitWatcher(xpManager),
     vscode.window.registerWebviewViewProvider('codexPetView', sidebarProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
@@ -570,6 +915,10 @@ export function activate(context: vscode.ExtensionContext) {
       if (e.affectsConfiguration('codexPet.idleStateWeights')) {
         for (const provider of providers) provider.postIdleWeightsUpdate(getIdleStateWeights());
       }
+
+      if (PET_GROWTH_SETTINGS.some((setting) => e.affectsConfiguration(setting))) {
+        for (const provider of providers) provider.postPetGrowthUpdate(getPetGrowthConfig());
+      }
     }),
   );
 }
@@ -591,6 +940,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pet: 
   const timing = getTimingConfig();
   const petScale = getPetScale();
   const idleStateWeights = getIdleStateWeights();
+  const petGrowth = getPetGrowthConfig();
 
   const nonce = getNonce();
 
@@ -616,6 +966,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pet: 
       timing: ${JSON.stringify(timing)},
       scale: ${JSON.stringify(petScale)},
       idleStateWeights: ${JSON.stringify(idleStateWeights)},
+      petGrowth: ${JSON.stringify(petGrowth)},
     };
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>

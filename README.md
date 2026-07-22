@@ -55,13 +55,23 @@ normal idle/walk behavior once it's done. The bubble shows what it's doing
 when available — the current tool name (e.g. "Bash", "Edit") during tool use,
 or "Thinking" while a prompt is being processed.
 
-This works by watching status files in `~/.codex-pet/` (one JSON file per
-tool, e.g. `claude-code.json`, containing `{ "state": "busy" | "idle",
-"updatedAt": <ms>, "label": <string | null> }`). A `busy` status older than
-30s is treated as stale and ignored, so a crashed session can't leave the pet
-stuck.
+Separately, whenever one or more Claude Code sessions have finished
+responding and are waiting on you for a prompt or action, a small red count
+badge appears on the pet; hovering it shows which session(s) (by workspace
+folder name) are waiting.
 
-Claude Code reports into this file via its
+This works by watching per-session status files under
+`~/.codex-pet/sessions/` (one JSON file per session, e.g.
+`claude-code-<session-id>.json`, containing `{ "source", "state": "busy" |
+"waiting", "updatedAt": <ms>, "label": <string | null>, "cwd": <string |
+null> }`). A `busy` status older than 30s is treated as stale and ignored, so
+a crashed session can't leave the pet stuck animating. A `waiting` status can
+sit for much longer before being dropped (default 4 hours, via
+`codexPet.waitingStaleMs`) since a session can legitimately wait on a human
+for a long time — this timeout only exists to eventually clean up sessions
+that crashed after finishing a response but before ending.
+
+Claude Code reports into these files via its
 [hooks](https://docs.claude.com/en/docs/claude-code/hooks) mechanism. The
 first time the extension activates with hooks missing, it offers to install
 them for you; you can also trigger this anytime via **Codex Pet: Install
@@ -73,18 +83,26 @@ Claude Code Hooks...**, or do it by hand by adding to
   "hooks": {
     "PreToolUse": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy" }] }],
     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code busy Thinking" }] }],
-    "Stop": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code idle" }] }],
-    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code idle" }] }]
+    "Stop": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code waiting" }] }],
+    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "~/.codex-pet/report-status.sh claude-code end" }] }]
   }
 }
 ```
 
 `report-status.sh` itself is (re)written to `~/.codex-pet/` by the extension
 on every activation, so it's always present once the extension has run once
-— the hooks above just need to call it. For `PreToolUse`, Claude Code pipes
-the hook's JSON payload (which includes `tool_name`) on stdin; the script
-picks that up automatically to label the bubble, unless an explicit label is
-passed as a third argument (as `UserPromptSubmit` does with `Thinking`).
+— the hooks above just need to call it. Claude Code pipes the hook's JSON
+payload (which includes `session_id`, `cwd`, and for `PreToolUse`,
+`tool_name`) on stdin; the script picks those up automatically to key each
+session's file and label the bubble, unless an explicit label is passed as a
+third argument (as `UserPromptSubmit` does with `Thinking`). `end`
+(`SessionEnd`) deletes that session's file instead of writing a state.
+
+If you installed hooks before this per-session tracking landed, re-run
+**Codex Pet: Install Claude Code Hooks...** — the old `Stop`/`SessionEnd`
+commands (which reported `idle`) will be recognized as missing and the
+current ones added alongside them; remove the stale `idle` lines from
+`~/.claude/settings.json` by hand afterward.
 
 ## Reacting to GitHub Copilot activity (experimental)
 
@@ -95,8 +113,11 @@ is open but unshipped). So instead of a real signal, adding `copilot` to
 `codexPet.aiActivitySources` (off by default) uses a heuristic: bursts of
 large or multi-part text-document edits look more like an agent streaming
 changes than someone typing key-by-key, so the extension treats those as
-"busy" and reports it into `~/.codex-pet/copilot.json` (same status-file
-protocol as Claude Code above, with a fixed "Copilot" label).
+"busy" and reports it into `~/.codex-pet/sessions/copilot-copilot.json` (same
+status-file protocol as Claude Code above, with a fixed "Copilot" label).
+Copilot has no equivalent of Claude Code's `Stop` hook, so it never reports
+`waiting` — only `busy`, cleared back to nothing once the edit burst quiets
+down.
 
 This is a guess, not a real signal — it can also fire on pastes, snippet
 expansion, formatters, find/replace, or other bulk edits from any source, not
@@ -127,6 +148,12 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.maxActionDuration`    | `3500`  | Maximum ms spent in one action before picking a new one.                     |
 | `codexPet.idleAnimationSpeed`   | `1`     | Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). Doesn't affect walk/run. |
 | `codexPet.aiActivitySources`    | `["claude-code"]` | Which AI tools trigger the busy animation + speech bubble: `claude-code`, `copilot` (experimental heuristic), both, or empty to disable. See below. |
+| `codexPet.waitingStaleMs`       | `14400000` (4h) | How long a Claude Code session can sit in the "waiting for you" state before its badge entry is dropped as stale (crash cleanup only — doesn't affect normal waiting). |
+| `codexPet.xpEnabled`            | `true`  | Whether the pet earns XP/levels from coding activity (AI tool activity, editor edits, terminal use, git commits, clicks). Progress (and level) is tracked separately per pet. |
+| `codexPet.petGrowthEnabled`     | `false` | Whether the pet's sprite size grows with its level, from `petGrowthMinScale` at level 1 up to `petGrowthMaxScale` at `petGrowthMaxLevel`. Both are multipliers of `codexPet.petScale`. Requires `xpEnabled`. |
+| `codexPet.petGrowthMinScale`    | `0.7`   | Size multiplier at level 1, when growth is enabled. |
+| `codexPet.petGrowthMaxScale`    | `1.5`   | Size multiplier at `petGrowthMaxLevel`, when growth is enabled. |
+| `codexPet.petGrowthMaxLevel`    | `20`    | Level at which the pet reaches `petGrowthMaxScale`. Growth is linear from level 1, then caps. |
 
 Timing settings (`walkSpeed`, `moveChance`, `min/maxActionDuration`) apply live
 to an already-open view — no reload needed. Changing `selectedPet` swaps the
@@ -156,9 +183,10 @@ ship the manifest and image. Since this extension is its own renderer, that
 same grid geometry plus our own per-row frame counts/fps/loop live in
 [`media/sprite-config.json`](media/sprite-config.json) (shared across all pets,
 not per-pet). Per-row **frame counts** aren't part of the published spec, so
-those were eyeballed from the one sample sheet in `pets/0805-blackdragon/` —
-double check them against `spritesheet.webp` (or another sample) if an
-animation looks like it's looping into a blank/magenta frame.
+those were eyeballed from the bundled sample sheets under `pets/` (e.g.
+`pets/hoggie/spritesheet.webp`) — double check them against a pet's
+spritesheet if an animation looks like it's looping into a blank/magenta
+frame.
 
 ## Current behavior
 
@@ -178,13 +206,25 @@ animation looks like it's looping into a blank/magenta frame.
   underneath. If the cursor stops roughly above the pet, it jumps to try to
   reach it (on a ~1.2s cooldown so it doesn't jump nonstop). Moving the
   cursor off the view resumes normal random idle/walk behavior.
+- The pet earns XP (and levels shown as a small badge on its sprite) from
+  active coding: a minute containing AI-tool activity, an editor edit, or
+  terminal use counts once toward XP, a git commit is a flat one-off bonus,
+  and clicking the pet gives a small rate-limited bonus too. Leveling up
+  plays a jump + heart celebration. Progress persists per pet across restarts
+  and updates; disable with `codexPet.xpEnabled`. Optionally
+  (`codexPet.petGrowthEnabled`, off by default), the pet's sprite size grows
+  with its level too, from a smaller starting size up to 1.5x the configured
+  scale.
 
 ## Installing as a real (non-dev-host) extension
 
 ```bash
-npx @vscode/vsce package --no-rewrite-relative-links
-code --install-extension vscode-codex-pet-0.0.1.vsix
+npm run install-extension
 ```
+
+This packages a `.vsix` (via `npx @vscode/vsce package`) and installs it with
+`code --install-extension`. To cut a new version first, use
+`npm run release [patch|minor|major|x.y.z]` (see [scripts/release.js](scripts/release.js)).
 
 Or in VS Code: Extensions view → `...` menu → **Install from VSIX...**.
 
