@@ -29,8 +29,11 @@
   let idleStateWeights = window.CODEX_PET.idleStateWeights || {};
 
   let petLevel = null;
+  let petXpProgress = 0;
   let levelUpFlash = 0;
   const LEVEL_UP_FLASH_DURATION = 1500;
+  let hoveringLevelBadge = false;
+  let levelBadgeBox = null;
 
   let petGrowth = Object.assign(
     { enabled: false, minScale: 0.7, maxScale: 1.5, maxLevel: 20 },
@@ -54,6 +57,7 @@
     }
     if (event.data?.type === 'xp-update') {
       petLevel = event.data.level;
+      petXpProgress = Number(event.data.progress) || 0;
       if (event.data.leveledUp) celebrateLevelUp();
     }
     if (event.data?.type === 'update-pet-growth') {
@@ -365,24 +369,73 @@
   }
 
   function drawLevelBadge() {
-    if (petLevel === null) return;
+    if (petLevel === null) {
+      levelBadgeBox = null;
+      return;
+    }
 
     const flashing = levelUpFlash > 0;
-    const radius = flashing ? 11 : 9;
-    const cx = petBox.x + petBox.w - radius - 2;
-    const cy = petBox.y + radius + 2;
+    const text = `Lvl ${petLevel}`;
+    const badgeHeight = 16;
+    const barHeight = 3;
+    const totalHeight = badgeHeight + barHeight;
 
     ctx.save();
+    ctx.font = 'bold 10px sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const badgeWidth = textWidth + 14;
+
+    const right = petBox.x + petBox.w - 2;
+    const top = petBox.y + 2;
+    const left = right - badgeWidth;
+    levelBadgeBox = { x: left, y: top, w: badgeWidth, h: totalHeight };
+
     ctx.fillStyle = flashing ? 'rgba(255, 205, 60, 0.95)' : 'rgba(20, 20, 20, 0.75)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    roundRectPath(left, top, badgeWidth, badgeHeight, 5);
     ctx.fill();
 
     ctx.fillStyle = flashing ? '#3a2a00' : '#f0f0f0';
-    ctx.font = 'bold 10px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(petLevel), cx, cy + 1);
+    ctx.fillText(text, left + badgeWidth / 2, top + badgeHeight / 2);
+
+    // Progress-to-next-level bar underneath the badge.
+    const barY = top + badgeHeight + 1;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    roundRectPath(left, barY, badgeWidth, barHeight, 1.5);
+    ctx.fill();
+    if (petXpProgress > 0) {
+      ctx.fillStyle = flashing ? 'rgba(255, 205, 60, 0.95)' : 'rgba(140, 210, 255, 0.95)';
+      roundRectPath(left, barY, badgeWidth * petXpProgress, barHeight, 1.5);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function drawLevelTooltip() {
+    if (!hoveringLevelBadge || petLevel === null || !levelBadgeBox) return;
+
+    const text = `Level ${petLevel} — ${Math.round(petXpProgress * 100)}% to next`;
+    const bubbleHeight = 20;
+    const cx = levelBadgeBox.x + levelBadgeBox.w / 2;
+    const bottomY = levelBadgeBox.y - 4;
+    const topY = bottomY - bubbleHeight;
+
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const bubbleWidth = clamp(textWidth + 16, 34, canvas.width - 4);
+    const left = clamp(cx - bubbleWidth / 2, 2, canvas.width - bubbleWidth - 2);
+
+    ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+    roundRectPath(left, topY, bubbleWidth, bubbleHeight, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#f0f0f0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, left + bubbleWidth / 2, topY + bubbleHeight / 2 - 1);
     ctx.restore();
   }
 
@@ -436,6 +489,14 @@
         cy <= waitingBadgeBox.y + waitingBadgeBox.h,
     );
 
+    hoveringLevelBadge = Boolean(
+      levelBadgeBox &&
+        cx >= levelBadgeBox.x &&
+        cx <= levelBadgeBox.x + levelBadgeBox.w &&
+        cy >= levelBadgeBox.y &&
+        cy <= levelBadgeBox.y + levelBadgeBox.h,
+    );
+
     cursorX = cx;
     cursorY = cy;
     cursorActive = true;
@@ -446,6 +507,7 @@
     cursorX = null;
     cursorY = null;
     hoveringWaitingBadge = false;
+    hoveringLevelBadge = false;
   });
 
   function drawPlaceholder(scale) {
@@ -561,6 +623,7 @@
     drawSprite(dt);
     drawAiBubble(now);
     drawLevelBadge();
+    drawLevelTooltip();
     drawWaitingBadge();
     drawWaitingTooltip();
     updateHearts(dt);

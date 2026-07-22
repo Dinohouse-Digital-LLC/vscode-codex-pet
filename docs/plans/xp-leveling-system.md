@@ -122,3 +122,20 @@ has `petLevel` from the `'xp-update'` message.
 - [x] Compute the growth multiplier in `getScale()` from `petLevel` and fold
       it into the existing `config.scale * userScale` calculation.
 - [x] Update README Settings table with the four new settings.
+
+### Phase 6 — progress-to-next-level indicator (extension.ts + media/main.js)
+Added after a user question about how much XP each level needs.
+`xpProgress(xp, level)` in extension.ts is the single source of truth for the
+fraction (handles level 1's floor being 0 rather than `xpForLevel(1)`, since
+`levelForXp` never actually uses `xpForLevel(1)` as a threshold); the webview
+only renders whatever fraction it's sent. The level badge itself was also
+upgraded from a bare number-in-a-circle to a "Lvl N" pill (a follow-up
+request, once there was a percent worth showing) with a thin progress bar
+underneath — a ring around the circular badge was the first cut, replaced
+once the badge became a pill because a ring doesn't wrap a rectangle well.
+- [x] Add `xpProgress(xp, level)` and thread it through `postXpUpdate`/
+      `'xp-update'`.
+- [x] Redraw the level badge as a "Lvl N" pill with a progress bar underneath
+      in `drawLevelBadge()`.
+- [x] Add a hover tooltip (`drawLevelTooltip()`, mirroring the existing
+      waiting-badge tooltip pattern) showing the exact percent.

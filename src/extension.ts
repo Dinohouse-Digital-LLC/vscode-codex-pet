@@ -141,6 +141,16 @@ function levelForXp(xp: number): number {
   return level;
 }
 
+// Fraction of the way from the current level to the next one. Level 1 has no
+// real "floor" (xpForLevel(1) is never used as a threshold by levelForXp), so
+// it's treated as starting at 0 XP; every other level floors at xpForLevel(level).
+function xpProgress(xp: number, level: number): number {
+  const floor = level <= 1 ? 0 : xpForLevel(level);
+  const ceiling = xpForLevel(level + 1);
+  if (ceiling <= floor) return 0;
+  return Math.max(0, Math.min(1, (xp - floor) / (ceiling - floor)));
+}
+
 const XP_PER_ACTIVE_MINUTE = 2;
 const XP_PER_COMMIT = 15;
 const XP_PER_CLICK = 1;
@@ -196,7 +206,12 @@ class XpManager {
     this.scheduleSave();
     if (petId === this.currentPetId) {
       for (const provider of this.providers) {
-        provider.postXpUpdate(record.xp, record.level, record.level > prevLevel);
+        provider.postXpUpdate(
+          record.xp,
+          record.level,
+          xpProgress(record.xp, record.level),
+          record.level > prevLevel,
+        );
       }
     }
   }
@@ -204,7 +219,9 @@ class XpManager {
   setCurrentPet(petId: string): void {
     this.currentPetId = petId;
     const record = this.getRecord(petId);
-    for (const provider of this.providers) provider.postXpUpdate(record.xp, record.level, false);
+    for (const provider of this.providers) {
+      provider.postXpUpdate(record.xp, record.level, xpProgress(record.xp, record.level), false);
+    }
   }
 
   markActive(): void {
@@ -831,8 +848,8 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: 'ai-state', busy, label, waiting: waiting ?? [] });
   }
 
-  postXpUpdate(xp: number, level: number, leveledUp: boolean): void {
-    this.view?.webview.postMessage({ type: 'xp-update', xp, level, leveledUp });
+  postXpUpdate(xp: number, level: number, progress: number, leveledUp: boolean): void {
+    this.view?.webview.postMessage({ type: 'xp-update', xp, level, progress, leveledUp });
   }
 
   postPetGrowthUpdate(growth: PetGrowthConfig): void {
