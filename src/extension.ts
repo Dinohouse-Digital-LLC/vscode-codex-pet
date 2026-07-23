@@ -201,6 +201,16 @@ function dateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+// Chronological comparison of dateKey() strings (which aren't lexicographically
+// sortable since fields aren't zero-padded). Used to tell which of two
+// independently-computed streak states (e.g. this window's vs. another
+// window's, read back from disk) is further ahead.
+function compareDateKeys(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  return new Date(ay, am, ad).getTime() - new Date(by, bm, bd).getTime();
+}
+
 // Weekdays strictly between two weekday date keys (exclusive of both), used
 // to tell "the very next weekday" (0 missed) from "one weekday skipped" (1,
 // forgiven by the grace window) from "two or more skipped" (hard reset).
@@ -265,6 +275,13 @@ interface XpUpdateEntry {
   leveledUp: boolean;
 }
 
+interface StreakInfo {
+  dailyStreakDays: number;
+  sessionActiveMs: number;
+  multiplier: number;
+  bonuses: { daily: number; session: number; weekend: number; lateNight: number };
+}
+
 // Awards XP for real coding activity: any minute containing AI-tool activity,
 // an editor edit, or terminal use counts once as an "active minute" (rather
 // than per-keystroke/per-command, which would be trivially gameable and noisy
@@ -281,6 +298,12 @@ interface XpUpdateEntry {
 class XpManager {
   private state: Record<string, XpRecord> = {};
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  // XP awarded by this window since the last flush, per pet. Flushing applies
+  // this delta on top of a fresh read of disk state (rather than overwriting
+  // disk with this window's possibly-stale in-memory snapshot), so concurrent
+  // windows' awards accumulate instead of racing to clobber each other.
+  private pendingXpDelta: Record<string, number> = {};
+  private streakDirty = false;
   private lastActivityAt = 0;
   private lastClickXpAt = 0;
   // Continuous unbroken active duration, in ms — frozen (not reset) across a
@@ -306,12 +329,102 @@ class XpManager {
     if (this.saveTimer) clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => {
       this.saveTimer = undefined;
-      saveXpState(this.context, this.state);
-      saveStreakState(this.context, {
+      void this.flush();
+    }, 2000);
+  }
+
+  // Read-merge-write: re-reads the on-disk state and applies only what's
+  // changed in this window (the XP delta since the last flush; the streak
+  // transition if this window advanced it) rather than overwriting the file
+  // with a stale in-memory snapshot. Makes concurrent windows converge instead
+  // of last-writer-wins clobbering each other.
+  private async flush(): Promise<void> {
+    const delta = this.pendingXpDelta;
+    this.pendingXpDelta = {};
+    if (Object.keys(delta).length > 0) {
+      const disk = await loadXpState(this.context);
+      for (const [petId, amount] of Object.entries(delta)) {
+        const record = disk[petId] ?? { xp: 0, level: 1, lastUpdated: 0 };
+        record.xp += amount;
+        record.level = levelForXp(record.xp);
+        record.lastUpdated = Date.now();
+        disk[petId] = record;
+      }
+      this.state = disk;
+      await saveXpState(this.context, this.state);
+      this.broadcastXpUpdate(
+        this.currentPetIds.map((petId) => {
+          const record = this.getRecord(petId);
+          return {
+            petId,
+            xp: record.xp,
+            level: record.level,
+            progress: xpProgress(record.xp, record.level),
+            leveledUp: false,
+          };
+        }),
+      );
+    }
+
+    if (this.streakDirty) {
+      this.streakDirty = false;
+      const disk = await loadStreakState(this.context);
+      if (
+        disk.lastActiveWeekdayKey &&
+        (!this.lastActiveWeekdayKey || compareDateKeys(disk.lastActiveWeekdayKey, this.lastActiveWeekdayKey) >= 0)
+      ) {
+        // Another window already recorded today's (or a later) transition on
+        // disk - adopt it instead of overwriting with our own copy.
+        this.dailyStreakDays = disk.dailyStreakDays;
+        this.lastActiveWeekdayKey = disk.lastActiveWeekdayKey;
+      }
+      await saveStreakState(this.context, {
         dailyStreakDays: this.dailyStreakDays,
         lastActiveWeekdayKey: this.lastActiveWeekdayKey,
       });
-    }, 2000);
+    }
+  }
+
+  // Picks up XP/streak changes written by other windows, without clobbering
+  // this window's own not-yet-flushed awards. Called on a file-change
+  // notification so idle windows stay in sync even between this window's own
+  // saves.
+  async reloadFromDisk(): Promise<void> {
+    const disk = await loadXpState(this.context);
+    let changed = false;
+    for (const [petId, record] of Object.entries(disk)) {
+      if (petId in this.pendingXpDelta) continue; // an unflushed local award will merge with this on next flush
+      const existing = this.state[petId];
+      if (!existing || record.lastUpdated > existing.lastUpdated) {
+        this.state[petId] = record;
+        changed = true;
+      }
+    }
+
+    const streakDisk = await loadStreakState(this.context);
+    if (
+      !this.streakDirty &&
+      streakDisk.lastActiveWeekdayKey &&
+      (!this.lastActiveWeekdayKey || compareDateKeys(streakDisk.lastActiveWeekdayKey, this.lastActiveWeekdayKey) > 0)
+    ) {
+      this.dailyStreakDays = streakDisk.dailyStreakDays;
+      this.lastActiveWeekdayKey = streakDisk.lastActiveWeekdayKey;
+    }
+
+    if (changed) {
+      this.broadcastXpUpdate(
+        this.currentPetIds.map((petId) => {
+          const record = this.getRecord(petId);
+          return {
+            petId,
+            xp: record.xp,
+            level: record.level,
+            progress: xpProgress(record.xp, record.level),
+            leveledUp: false,
+          };
+        }),
+      );
+    }
   }
 
   private getRecord(petId: string): XpRecord {
@@ -335,6 +448,26 @@ class XpManager {
     for (const provider of this.providers) provider.postXpUpdate(entries);
   }
 
+  getStreakInfo(now: Date = new Date()): StreakInfo {
+    const bonuses = {
+      daily: dailyStreakBonus(this.dailyStreakDays),
+      session: sessionStreakBonus(this.sessionActiveMs),
+      weekend: weekendBonus(now),
+      lateNight: lateNightBonus(now),
+    };
+    return {
+      dailyStreakDays: this.dailyStreakDays,
+      sessionActiveMs: this.sessionActiveMs,
+      multiplier: 1 + bonuses.daily + bonuses.session + bonuses.weekend + bonuses.lateNight,
+      bonuses,
+    };
+  }
+
+  broadcastStreakUpdate(): void {
+    const info = this.getStreakInfo();
+    for (const provider of this.providers) provider.postStreakUpdate(info);
+  }
+
   private award(petId: string, amount: number): void {
     if (!isXpEnabled()) return;
     const record = this.getRecord(petId);
@@ -342,6 +475,7 @@ class XpManager {
     record.xp += amount;
     record.level = levelForXp(record.xp);
     record.lastUpdated = Date.now();
+    this.pendingXpDelta[petId] = (this.pendingXpDelta[petId] ?? 0) + amount;
     this.scheduleSave();
     if (this.currentPetIds.includes(petId)) {
       this.broadcastXpUpdate([
@@ -377,6 +511,7 @@ class XpManager {
     this.updateSessionStreak(now);
     this.updateDailyStreak(now);
     this.lastActivityAt = now;
+    this.broadcastStreakUpdate();
   }
 
   private updateSessionStreak(now: number): void {
@@ -406,6 +541,7 @@ class XpManager {
       this.dailyStreakDays = 1;
     }
     this.lastActiveWeekdayKey = todayKey;
+    this.streakDirty = true;
     this.scheduleSave();
   }
 
@@ -428,14 +564,9 @@ class XpManager {
       if (Date.now() - this.lastActivityAt > ACTIVE_WINDOW_MS) return;
 
       // Sublinear pool: 1 pet = 2 XP/min (unchanged), 2 pets = 3, 3 pets = 4, ...
-      const now = new Date();
-      const multiplier =
-        1 +
-        dailyStreakBonus(this.dailyStreakDays) +
-        sessionStreakBonus(this.sessionActiveMs) +
-        weekendBonus(now) +
-        lateNightBonus(now);
-      const pool = XP_PER_ACTIVE_MINUTE * (1 + 0.5 * (petIds.length - 1)) * multiplier;
+      const streakInfo = this.getStreakInfo();
+      for (const provider of this.providers) provider.postStreakUpdate(streakInfo);
+      const pool = XP_PER_ACTIVE_MINUTE * (1 + 0.5 * (petIds.length - 1)) * streakInfo.multiplier;
 
       const levels = petIds.map((id) => this.getRecord(id).level);
       const maxLevel = Math.max(...levels);
@@ -456,11 +587,7 @@ class XpManager {
         clearTimeout(this.saveTimer);
         this.saveTimer = undefined;
       }
-      saveXpState(this.context, this.state);
-      saveStreakState(this.context, {
-        dailyStreakDays: this.dailyStreakDays,
-        lastActiveWeekdayKey: this.lastActiveWeekdayKey,
-      });
+      void this.flush();
     });
   }
 }
@@ -510,6 +637,37 @@ function startGitCommitWatcher(xpManager: XpManager): vscode.Disposable {
 
   return new vscode.Disposable(() => {
     for (const watcher of watchers) watcher.close();
+  });
+}
+
+// Keeps XP/streak in sync across multiple VS Code windows: each window only
+// flushes its own state to xp.json/streak.json on its own save cycle, so an
+// idle window would otherwise show stale progress until it next awards XP
+// itself. Watching the storage directory lets it pick up other windows'
+// writes as they happen.
+function startXpFileWatcher(context: vscode.ExtensionContext, xpManager: XpManager): vscode.Disposable {
+  let watcher: fs.FSWatcher | undefined;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const onChange = (_event: string, filename: string | null) => {
+    if (filename && filename !== 'xp.json' && filename !== 'streak.json') return;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = undefined;
+      void xpManager.reloadFromDisk();
+    }, 300);
+  };
+
+  try {
+    fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
+    watcher = fs.watch(context.globalStorageUri.fsPath, { persistent: false }, onChange);
+  } catch {
+    watcher = undefined;
+  }
+
+  return new vscode.Disposable(() => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    watcher?.close();
   });
 }
 
@@ -1114,6 +1272,7 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
         this.showPets(pets);
         const state = computeAiState();
         this.postAiState(state.busy, state.label, state.waiting);
+        this.postStreakUpdate(this.xpManager.getStreakInfo());
       }
     });
   }
@@ -1156,6 +1315,10 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: 'xp-update', pets });
   }
 
+  postStreakUpdate(streak: StreakInfo): void {
+    this.view?.webview.postMessage({ type: 'streak-update', streak });
+  }
+
   postPetGrowthUpdate(growth: PetGrowthConfig): void {
     this.view?.webview.postMessage({ type: 'update-pet-growth', growth });
   }
@@ -1187,6 +1350,7 @@ export async function activate(context: vscode.ExtensionContext) {
     startCopilotActivityHeuristic(),
     startEditorAndTerminalActivityWatcher(xpManager),
     startGitCommitWatcher(xpManager),
+    startXpFileWatcher(context, xpManager),
     vscode.window.registerWebviewViewProvider('codexPetView', sidebarProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),

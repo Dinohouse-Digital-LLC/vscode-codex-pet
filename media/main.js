@@ -22,6 +22,9 @@
   let aiBusy = false;
   let aiLabel = '';
   let waitingSessions = [];
+  let streakInfo = null;
+  let hoveringStreakBadge = false;
+  let streakBadgeBox = null;
   let userScale = Number(window.CODEX_PET.scale) || 1;
   let idleStateWeights = window.CODEX_PET.idleStateWeights || {};
 
@@ -138,6 +141,9 @@
     }
     if (data.type === 'update-pet-growth') {
       petGrowth = Object.assign({}, petGrowth, data.growth);
+    }
+    if (data.type === 'streak-update') {
+      streakInfo = data.streak || null;
     }
   });
 
@@ -435,6 +441,75 @@
     ctx.restore();
   }
 
+  // Streak/multiplier badge: global (not per-pet) state, so it's drawn once
+  // per frame anchored to the canvas corner rather than a pet's box.
+  function drawStreakBadge() {
+    if (!streakInfo) {
+      streakBadgeBox = null;
+      return;
+    }
+
+    const text = `🔥${streakInfo.dailyStreakDays}d  ${streakInfo.multiplier.toFixed(2)}x`;
+    const badgeHeight = 16;
+
+    ctx.save();
+    ctx.font = 'bold 10px sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const badgeWidth = textWidth + 14;
+
+    const left = canvas.width - badgeWidth - 4;
+    const top = 4;
+    streakBadgeBox = { x: left, y: top, w: badgeWidth, h: badgeHeight };
+
+    ctx.fillStyle =
+      streakInfo.multiplier > 1 ? 'rgba(220, 120, 40, 0.85)' : 'rgba(20, 20, 20, 0.75)';
+    roundRectPath(left, top, badgeWidth, badgeHeight, 5);
+    ctx.fill();
+
+    ctx.fillStyle = '#f5f5f5';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, left + badgeWidth / 2, top + badgeHeight / 2 + 1);
+    ctx.restore();
+  }
+
+  function drawStreakTooltip() {
+    if (!hoveringStreakBadge || !streakInfo || !streakBadgeBox) return;
+
+    const sessionMinutes = Math.floor(streakInfo.sessionActiveMs / 60000);
+    const bonuses = streakInfo.bonuses || {};
+    const lines = [
+      `Daily streak: ${streakInfo.dailyStreakDays}d (+${Math.round((bonuses.daily || 0) * 100)}%)`,
+      `Session: ${sessionMinutes}m (+${Math.round((bonuses.session || 0) * 100)}%)`,
+    ];
+    if (bonuses.weekend > 0) lines.push(`Weekend bonus: +${Math.round(bonuses.weekend * 100)}%`);
+    if (bonuses.lateNight > 0) lines.push(`Late night bonus: +${Math.round(bonuses.lateNight * 100)}%`);
+
+    const lineHeight = 14;
+    const padding = 6;
+    const bubbleHeight = lines.length * lineHeight + padding * 2;
+
+    ctx.save();
+    ctx.font = '11px sans-serif';
+    const textWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    const bubbleWidth = textWidth + padding * 2;
+    const right = streakBadgeBox.x + streakBadgeBox.w;
+    const bottomY = streakBadgeBox.y + streakBadgeBox.h + 4;
+    const left = clamp(right - bubbleWidth, 2, canvas.width - bubbleWidth - 2);
+
+    ctx.fillStyle = 'rgba(20, 20, 20, 0.9)';
+    roundRectPath(left, bottomY, bubbleWidth, bubbleHeight, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#f0f0f0';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    lines.forEach((line, i) => {
+      ctx.fillText(line, left + padding, bottomY + padding + lineHeight * i + lineHeight / 2);
+    });
+    ctx.restore();
+  }
+
   function drawLevelBadge(pet) {
     if (pet.level === null) {
       pet.levelBadgeBox = null;
@@ -582,6 +657,14 @@
       );
     }
 
+    hoveringStreakBadge = Boolean(
+      streakBadgeBox &&
+        cx >= streakBadgeBox.x &&
+        cx <= streakBadgeBox.x + streakBadgeBox.w &&
+        cy >= streakBadgeBox.y &&
+        cy <= streakBadgeBox.y + streakBadgeBox.h,
+    );
+
     cursorX = cx;
     cursorY = cy;
     cursorActive = true;
@@ -595,6 +678,7 @@
       pet.hoveringWaitingBadge = false;
       pet.hoveringLevelBadge = false;
     }
+    hoveringStreakBadge = false;
   });
 
   function drawPlaceholder(pet, scale) {
@@ -724,6 +808,9 @@
       if (!pet.config) continue;
       updatePet(pet, dt, now);
     }
+
+    drawStreakBadge();
+    drawStreakTooltip();
 
     requestAnimationFrame(tick);
   }
