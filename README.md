@@ -230,7 +230,27 @@ frame.
   and updates; disable with `codexPet.xpEnabled`. Optionally
   (`codexPet.petGrowthEnabled`, off by default), the pet's sprite size grows
   with its level too, from a smaller starting size up to 1.5x the configured
-  scale.
+  scale — and once a pet reaches `codexPet.petGrowthMaxLevel`, it gets a
+  golden badge outline and a slow sparkle aura, so leveling further still has
+  a visible payoff after size growth caps out.
+- On top of the active-minute pool, a few multipliers reward showing up
+  regularly and sticking around, all additive and applied before the
+  per-pet split:
+  - **Daily streak**: +10% per consecutive weekday (Mon–Fri) you're active,
+    capping at +100% on day 10. Weekends don't advance or break it — it's
+    neutral, not required and not penalized. Missing a single weekday is
+    forgiven (e.g. active Thu, off Fri, active Mon → streak intact); missing
+    two weekdays in a row resets it.
+  - **Session streak**: +10% per 30 continuous active minutes in one
+    sitting, capping at +100% at 5 hours. A gap of up to 30 minutes just
+    pauses the clock (it doesn't reset); a gap over 90 minutes resets it to
+    zero.
+  - **Weekend bonus**: flat +20% for any active minute on Sat/Sun.
+  - **Late-night bonus**: flat +20% for any active minute between 10pm and
+    6am local time, any day.
+  
+  These stack freely (no combined ceiling) — commit XP and click XP are
+  unaffected either way.
 
 ## Installing as a real (non-dev-host) extension
 

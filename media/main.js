@@ -157,6 +157,37 @@
     return petGrowth.minScale + t * (petGrowth.maxScale - petGrowth.minScale);
   }
 
+  // Prestige: past petGrowthMaxLevel, size growth plateaus but there's still
+  // a visible payoff for leveling further — a golden badge border + a slow
+  // sparkle aura around the pet.
+  function isPrestige(pet) {
+    return petGrowth.enabled && pet.level !== null && pet.level >= petGrowth.maxLevel;
+  }
+
+  function drawPrestigeAura(pet, now) {
+    if (!isPrestige(pet)) return;
+
+    const cx = pet.petBox.x + pet.petBox.w / 2;
+    const cy = pet.petBox.y + pet.petBox.h / 2;
+    const radiusX = pet.petBox.w / 2 + 8;
+    const radiusY = pet.petBox.h / 2 + 4;
+    const sparkleCount = 4;
+
+    ctx.save();
+    for (let i = 0; i < sparkleCount; i++) {
+      const angle = now / 900 + (i * (Math.PI * 2)) / sparkleCount;
+      const sx = cx + Math.cos(angle) * radiusX;
+      const sy = cy + Math.sin(angle) * radiusY;
+      const twinkle = 0.5 + 0.5 * Math.sin(now / 220 + i * 1.7);
+      ctx.globalAlpha = 0.35 + twinkle * 0.5;
+      ctx.fillStyle = '#ffd558';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.4 + twinkle * 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function getScale(pet) {
     return (pet.config.scale || 1) * userScale * getGrowthMultiplier(pet);
   }
@@ -430,6 +461,13 @@
     roundRectPath(left, top, badgeWidth, badgeHeight, 5);
     ctx.fill();
 
+    if (isPrestige(pet) && !flashing) {
+      ctx.strokeStyle = 'rgba(255, 213, 88, 0.9)';
+      ctx.lineWidth = 1.5;
+      roundRectPath(left, top, badgeWidth, badgeHeight, 5);
+      ctx.stroke();
+    }
+
     ctx.fillStyle = flashing ? '#3a2a00' : '#f0f0f0';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -663,6 +701,7 @@
     }
 
     drawSprite(pet, dt);
+    drawPrestigeAura(pet, now);
     drawAiBubble(pet, now);
     drawLevelBadge(pet);
     drawLevelTooltip(pet);

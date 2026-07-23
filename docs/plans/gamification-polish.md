@@ -70,29 +70,36 @@ leveling past the cap still has a visible payoff.
 ## Checklist
 
 ### Phase 1 — streak tracking (extension.ts)
-- [ ] Track `lastActiveWeekday` / consecutive-weekday-miss count for the
+- [x] Track `lastActiveWeekday` / consecutive-weekday-miss count for the
       daily streak (persisted alongside `XpRecord`, or as its own small
       piece of global state — decide once XP persistence shape is
       revisited; doesn't need to be per-pet since it reflects the user's
-      overall activity, not any one pet's).
-- [ ] Track `sessionStartedAt` / `lastActivityAt`-derived pause/reset logic
+      overall activity, not any one pet's). Landed as its own `streak.json`
+      (`StreakState { dailyStreakDays, lastActiveWeekdayKey }`) alongside
+      `xp.json`, saved on the same debounce timer.
+- [x] Track `sessionStartedAt` / `lastActivityAt`-derived pause/reset logic
       for the session streak, reusing the existing `markActive()` call
-      sites.
-- [ ] Add pure functions for each bonus (`dailyStreakBonus(state)`,
+      sites. Landed as an accumulated `sessionActiveMs` (frozen across a
+      30-min pause, hard-reset past 90 min) rather than a wall-clock
+      `sessionStartedAt`, so paused time is never credited.
+- [x] Add pure functions for each bonus (`dailyStreakBonus(state)`,
       `sessionStreakBonus(state)`, `weekendBonus(now)`,
       `lateNightBonus(now)`) so the combined multiplier is testable in
       isolation from the interval/timer plumbing.
 
 ### Phase 2 — apply multiplier to the pool
-- [ ] Fold the combined multiplier into the active-minute pool calculation
+- [x] Fold the combined multiplier into the active-minute pool calculation
       from multiple-pets.md, before the catch-up split.
-- [ ] Confirm commit XP and click XP remain unaffected (flat, as decided).
+- [x] Confirm commit XP and click XP remain unaffected (flat, as decided).
 
 ### Phase 3 — prestige cosmetic (media/main.js + main.css)
-- [ ] Add a visual flourish (particle aura or badge border treatment) for
+- [x] Add a visual flourish (particle aura or badge border treatment) for
       pets at `petGrowthMaxLevel`, gated behind `petGrowthEnabled` as it's
-      an extension of that same growth system.
+      an extension of that same growth system. Landed as a golden badge
+      outline plus a slow 4-point sparkle aura, both canvas-drawn — no
+      `main.css` changes were needed since the pet view has no per-pet DOM
+      elements to style.
 
 ### Phase 4 — docs
-- [ ] Update [README.md](../../README.md) with the streak mechanics and
+- [x] Update [README.md](../../README.md) with the streak mechanics and
       off-hours bonuses.

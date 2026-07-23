@@ -163,6 +163,87 @@ function xpProgress(xp: number, level: number): number {
   return Math.max(0, Math.min(1, (xp - floor) / (ceiling - floor)));
 }
 
+// Gamification polish: streak multipliers and off-hours bonuses applied to
+// the active-minute pool (see multiple-pets.md's XP integration decision for
+// the pool itself). Reflects the user's overall activity, not any one pet's,
+// so it's tracked as its own small piece of global state rather than per pet.
+interface StreakState {
+  dailyStreakDays: number;
+  lastActiveWeekdayKey?: string;
+}
+
+function getStreakFilePath(context: vscode.ExtensionContext): vscode.Uri {
+  return vscode.Uri.joinPath(context.globalStorageUri, 'streak.json');
+}
+
+async function loadStreakState(context: vscode.ExtensionContext): Promise<StreakState> {
+  try {
+    const bytes = await vscode.workspace.fs.readFile(getStreakFilePath(context));
+    return JSON.parse(Buffer.from(bytes).toString('utf8'));
+  } catch {
+    return { dailyStreakDays: 0 };
+  }
+}
+
+async function saveStreakState(context: vscode.ExtensionContext, state: StreakState): Promise<void> {
+  try {
+    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+    await vscode.workspace.fs.writeFile(
+      getStreakFilePath(context),
+      Buffer.from(JSON.stringify(state, null, 2)),
+    );
+  } catch {
+    // Best-effort: if this fails, the daily streak just won't persist across sessions.
+  }
+}
+
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+// Weekdays strictly between two weekday date keys (exclusive of both), used
+// to tell "the very next weekday" (0 missed) from "one weekday skipped" (1,
+// forgiven by the grace window) from "two or more skipped" (hard reset).
+function countMissedWeekdaysBetween(fromKey: string, toKey: string): number {
+  const [fy, fm, fd] = fromKey.split('-').map(Number);
+  const [ty, tm, td] = toKey.split('-').map(Number);
+  const cursor = new Date(fy, fm, fd);
+  const to = new Date(ty, tm, td);
+  let missed = 0;
+  cursor.setDate(cursor.getDate() + 1);
+  while (cursor < to) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) missed++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return missed;
+}
+
+const SESSION_PAUSE_MS = 30 * 60 * 1000;
+const SESSION_HARD_RESET_MS = 90 * 60 * 1000;
+const SESSION_BONUS_STEP_MS = 30 * 60 * 1000;
+
+// Pure so the combined multiplier is testable in isolation from the
+// interval/timer plumbing that drives it.
+function dailyStreakBonus(streakDays: number): number {
+  return Math.min(1, Math.max(0, streakDays) * 0.1);
+}
+
+function sessionStreakBonus(sessionActiveMs: number): number {
+  const tiers = Math.floor(Math.max(0, sessionActiveMs) / SESSION_BONUS_STEP_MS);
+  return Math.min(1, tiers * 0.1);
+}
+
+function weekendBonus(now: Date): number {
+  const day = now.getDay();
+  return day === 0 || day === 6 ? 0.2 : 0;
+}
+
+function lateNightBonus(now: Date): number {
+  const hour = now.getHours();
+  return hour >= 22 || hour < 6 ? 0.2 : 0;
+}
+
 const XP_PER_ACTIVE_MINUTE = 2;
 const XP_PER_COMMIT = 15;
 const XP_PER_CLICK = 1;
@@ -202,6 +283,11 @@ class XpManager {
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   private lastActivityAt = 0;
   private lastClickXpAt = 0;
+  // Continuous unbroken active duration, in ms — frozen (not reset) across a
+  // pause, hard-reset to 0 across a longer gap. See markActive().
+  private sessionActiveMs = 0;
+  private dailyStreakDays = 0;
+  private lastActiveWeekdayKey: string | undefined;
   currentPetIds: string[] = [];
 
   constructor(
@@ -211,6 +297,9 @@ class XpManager {
 
   async load(): Promise<void> {
     this.state = await loadXpState(this.context);
+    const streak = await loadStreakState(this.context);
+    this.dailyStreakDays = streak.dailyStreakDays;
+    this.lastActiveWeekdayKey = streak.lastActiveWeekdayKey;
   }
 
   private scheduleSave(): void {
@@ -218,6 +307,10 @@ class XpManager {
     this.saveTimer = setTimeout(() => {
       this.saveTimer = undefined;
       saveXpState(this.context, this.state);
+      saveStreakState(this.context, {
+        dailyStreakDays: this.dailyStreakDays,
+        lastActiveWeekdayKey: this.lastActiveWeekdayKey,
+      });
     }, 2000);
   }
 
@@ -280,7 +373,40 @@ class XpManager {
   }
 
   markActive(): void {
-    this.lastActivityAt = Date.now();
+    const now = Date.now();
+    this.updateSessionStreak(now);
+    this.updateDailyStreak(now);
+    this.lastActivityAt = now;
+  }
+
+  private updateSessionStreak(now: number): void {
+    if (this.lastActivityAt === 0) return;
+    const gap = now - this.lastActivityAt;
+    if (gap > SESSION_HARD_RESET_MS) {
+      this.sessionActiveMs = 0;
+    } else if (gap > SESSION_PAUSE_MS) {
+      // Paused within the grace window: clock stays frozen (the paused gap
+      // itself isn't credited), and resumes accumulating from here.
+    } else {
+      this.sessionActiveMs += gap;
+    }
+  }
+
+  private updateDailyStreak(now: number): void {
+    const date = new Date(now);
+    const day = date.getDay();
+    if (day === 0 || day === 6) return; // weekends are neutral, not counted
+    const todayKey = dateKey(date);
+    if (todayKey === this.lastActiveWeekdayKey) return; // already counted today
+
+    if (this.lastActiveWeekdayKey) {
+      const missed = countMissedWeekdaysBetween(this.lastActiveWeekdayKey, todayKey);
+      this.dailyStreakDays = missed >= 2 ? 1 : this.dailyStreakDays + 1;
+    } else {
+      this.dailyStreakDays = 1;
+    }
+    this.lastActiveWeekdayKey = todayKey;
+    this.scheduleSave();
   }
 
   awardClick(petId: string): void {
@@ -302,7 +428,14 @@ class XpManager {
       if (Date.now() - this.lastActivityAt > ACTIVE_WINDOW_MS) return;
 
       // Sublinear pool: 1 pet = 2 XP/min (unchanged), 2 pets = 3, 3 pets = 4, ...
-      const pool = XP_PER_ACTIVE_MINUTE * (1 + 0.5 * (petIds.length - 1));
+      const now = new Date();
+      const multiplier =
+        1 +
+        dailyStreakBonus(this.dailyStreakDays) +
+        sessionStreakBonus(this.sessionActiveMs) +
+        weekendBonus(now) +
+        lateNightBonus(now);
+      const pool = XP_PER_ACTIVE_MINUTE * (1 + 0.5 * (petIds.length - 1)) * multiplier;
 
       const levels = petIds.map((id) => this.getRecord(id).level);
       const maxLevel = Math.max(...levels);
@@ -324,6 +457,10 @@ class XpManager {
         this.saveTimer = undefined;
       }
       saveXpState(this.context, this.state);
+      saveStreakState(this.context, {
+        dailyStreakDays: this.dailyStreakDays,
+        lastActiveWeekdayKey: this.lastActiveWeekdayKey,
+      });
     });
   }
 }
