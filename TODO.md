@@ -1,2 +1,3 @@
 - [ ] Multiple pets at once — [plan](docs/plans/multiple-pets.md)
 - [ ] Gamification polish (streaks, off-hours bonuses, prestige cosmetic) — [plan](docs/plans/gamification-polish.md)
+- [ ] Use the `look-*` direction poses to face the cursor (kept out of the idle rotation on purpose; needs a pose lookup, TBD when/where it triggers)

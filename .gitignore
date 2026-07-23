@@ -2,3 +2,16 @@ out/
 node_modules/
 *.vsix
 .DS_Store
+_runs
+*.zip
+
+# Sprite-pipeline QA artifacts (contact sheets, motion reports, per-state
+# preview gifs) - not read by the extension at runtime, regenerable from the
+# spritesheet + manifest.
+contact-sheet*.png
+pets/**/motion-report-*.json
+pets/**/previews/
+
+# Redundant PNG export of a webp spritesheet the extension actually loads
+# (manifests point at the .webp; the .png is only pipeline scratch).
+pets/**/spritesheet-seamless.png

@@ -4,17 +4,17 @@
   const ctx = canvas.getContext('2d');
   const stage = document.getElementById('pet-stage');
 
-  /** @type {{ id: string, spriteUri: string, configUri: string }[]} */
+  /** @type {{ id: string, spriteUri: string, configUri: string, standardConfigUri: string }[]} */
   const petDefs = window.CODEX_PET.pets || [];
 
   const timing = Object.assign(
     {
       walkSpeed: 40,
       moveChance: 0.5,
-      minActionDuration: 1500,
-      maxActionDuration: 3500,
+      minActionDuration: 3000,
+      maxActionDuration: 10000,
       jumpCooldown: 5000,
-      idleAnimationSpeed: 1,
+      idleAnimationSpeed: 0.5,
     },
     window.CODEX_PET.timing || {},
   );
@@ -211,9 +211,86 @@
     return margin + (usable * index) / (total - 1);
   }
 
+  // Nonstandard-seamless manifests use a richer per-action schema (baked
+  // ping-pong loops with an explicit frame list), but every pet's frame
+  // columns run sequentially from 0, so it reduces to the same
+  // row/frameCount/fps/loop shape the renderer already knows how to play.
+  //
+  // The `look-*` actions are deliberately absent from this map: they are
+  // direction poses (two rows of 8 sources, 22.5 degrees apart, covering a
+  // full turn), not animations, so playing them in the idle rotation would
+  // read as the pet spinning. Leaving them unmapped keeps them out of
+  // `states` entirely. They are reserved for aiming the pet at the cursor
+  // later, which needs a pose lookup rather than a state.
+  const SEAMLESS_STATE_IDS = {
+    idle: 'idle',
+    'running-right': 'runRight',
+    'running-left': 'runLeft',
+    waving: 'wave',
+    jumping: 'jump',
+    failed: 'failed',
+    waiting: 'waiting',
+    running: 'run',
+    review: 'review',
+  };
+
+  // Each manifest declares its own cell size (`frameWidth`/`frameHeight` for
+  // the standard schema, `cell.width`/`cell.height` for seamless ones), and
+  // those sizes aren't guaranteed to match between a pet's standard sheet
+  // and its alternate one. `scale` is derived, not copied, so an alternate
+  // sheet renders at the same on-screen footprint as the standard manifest
+  // regardless of its own cell resolution.
+  const referenceFrameSizeCache = new Map();
+  async function loadReferenceFrameSize(pet) {
+    if (!pet.standardConfigUri) return { frameWidth: 192, frameHeight: 208, scale: 1 };
+    if (referenceFrameSizeCache.has(pet.standardConfigUri)) {
+      return referenceFrameSizeCache.get(pet.standardConfigUri);
+    }
+    const res = await fetch(pet.standardConfigUri);
+    const standard = await res.json();
+    const ref = {
+      frameWidth: standard.frameWidth,
+      frameHeight: standard.frameHeight,
+      scale: standard.scale || 1,
+    };
+    referenceFrameSizeCache.set(pet.standardConfigUri, ref);
+    return ref;
+  }
+
+  function normalizeSeamlessConfig(raw, ref) {
+    const states = {};
+    for (const action of raw.actions || []) {
+      const stateId = SEAMLESS_STATE_IDS[action.id];
+      if (!stateId) continue;
+      states[stateId] = {
+        row: action.rowIndex,
+        frameCount: action.frameCount,
+        fps: action.fps,
+        loop: action.loop,
+      };
+    }
+    return {
+      frameWidth: raw.cell.width,
+      frameHeight: raw.cell.height,
+      scale: (ref.frameWidth * ref.scale) / raw.cell.width,
+      defaultState: 'idle',
+      busyState: 'review',
+      movementStates: { right: 'runRight', left: 'runLeft' },
+      idleStates: ['idle', 'wave', 'jump', 'waiting', 'review', 'failed'],
+      reactionStates: ['wave', 'jump'],
+      states,
+    };
+  }
+
   async function loadConfig(pet) {
     const res = await fetch(pet.configUri);
-    pet.config = await res.json();
+    const raw = await res.json();
+    if (Array.isArray(raw.actions)) {
+      const ref = await loadReferenceFrameSize(pet);
+      pet.config = normalizeSeamlessConfig(raw, ref);
+    } else {
+      pet.config = raw;
+    }
     pet.currentState = pet.config.defaultState || 'idle';
   }
 

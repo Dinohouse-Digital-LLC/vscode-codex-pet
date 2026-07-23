@@ -2,7 +2,7 @@
   "name": "vscode-codex-pet",
   "displayName": "Codex Pet",
   "description": "A sprite-sheet pet that walks around a VS Code panel, similar to vscode-pets.",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "publisher": "dinohousedigitalllc",
   "license": "MIT",
   "icon": "media/icons/marketplace-icon.png",
@@ -121,21 +121,21 @@
           "maximum": 1,
           "description": "Probability the pet starts moving (vs. playing a stationary animation) at the start of each action cycle."
         },
-        "codexPet.minActionDuration": {
+        "codexPet.minActionSeconds": {
           "type": "number",
-          "default": 1500,
-          "minimum": 100,
-          "description": "Minimum delay in milliseconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
+          "default": 3,
+          "minimum": 0.1,
+          "description": "Minimum delay in seconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
         },
-        "codexPet.maxActionDuration": {
+        "codexPet.maxActionSeconds": {
           "type": "number",
-          "default": 3500,
-          "minimum": 100,
-          "description": "Maximum delay in milliseconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
+          "default": 10,
+          "minimum": 0.1,
+          "description": "Maximum delay in seconds between actions: how long the pet stays in one action (moving or stationary) before picking a new one."
         },
         "codexPet.idleAnimationSpeed": {
           "type": "number",
-          "default": 1,
+          "default": 0.5,
           "minimum": 0.1,
           "maximum": 5,
           "description": "Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). 1 is normal speed; higher is faster, lower is slower. Does not affect walk/run animations."
@@ -157,7 +157,7 @@
         },
         "codexPet.petScale": {
           "type": "number",
-          "default": 1,
+          "default": 2,
           "minimum": 0.25,
           "maximum": 5,
           "description": "Scale multiplier applied to the pet's sprite size."
@@ -176,13 +176,14 @@
             ]
           },
           "default": [
-            "claude-code"
+            "claude-code",
+            "copilot"
           ],
           "description": "Which AI tools the pet plays a busy animation for while they're actively working. Leave empty to disable AI-activity reactions entirely."
         },
         "codexPet.waitingStaleMinutes": {
           "type": "number",
-          "default": 240,
+          "default": 15,
           "minimum": 0,
           "description": "How long (minutes) a session can sit in the 'waiting for you' state before it's treated as stale and dropped from the pet's waiting-session list. Only cleans up sessions that crashed after finishing a response but before ending; a normally-waiting session isn't affected by how long a human takes to reply."
         },
@@ -193,12 +194,12 @@
         },
         "codexPet.petGrowthEnabled": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Grow the pet's size as it levels up, from petGrowthMinScale at level 1 up to petGrowthMaxScale at petGrowthMaxLevel. Both bounds are multipliers of codexPet.petScale. Requires codexPet.xpEnabled."
         },
         "codexPet.petGrowthMinScale": {
           "type": "number",
-          "default": 0.7,
+          "default": 0.5,
           "minimum": 0.1,
           "maximum": 1,
           "description": "Size multiplier (of codexPet.petScale) the pet starts at when petGrowthEnabled is on."
@@ -215,6 +216,11 @@
           "default": 20,
           "minimum": 2,
           "description": "Level at which the pet reaches petGrowthMaxScale. Growth is linear between level 1 and this level, then caps."
+        },
+        "codexPet.useSeamlessSprites": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use each pet's nonstandard-seamless spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available."
         }
       }
     }

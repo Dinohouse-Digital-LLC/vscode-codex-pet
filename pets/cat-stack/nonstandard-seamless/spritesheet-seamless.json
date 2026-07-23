@@ -1,0 +1,1900 @@
+{
+  "schemaVersion": "cat-stack-nonstandard-seamless-2",
+  "id": "cat-stack-seamless",
+  "displayName": "Cat Stack Seamless",
+  "description": "Nonstandard seamless-loop Cat Stack sprite sheet with stronger baked movement. Not Codex v2 compatible; use this JSON manifest to read row-specific frame counts and timing.",
+  "codexCompatible": false,
+  "sourcePet": "cat-stack",
+  "sourceSpritesheet": "/Users/Z002QVV/.codex/pets/cat-stack/spritesheet.png",
+  "createdAt": "2026-07-23T15:08:25.837037Z",
+  "spritesheetPath": "spritesheet-seamless.webp",
+  "pngPath": "spritesheet-seamless.png",
+  "sha256": "53c69357b82ea891af747b5ee485169ebc37febc3fbab4b3ddf65dddd44f105c",
+  "cell": {
+    "width": 192,
+    "height": 208
+  },
+  "atlas": {
+    "columns": 28,
+    "rows": 11,
+    "width": 5376,
+    "height": 2288
+  },
+  "timing": {
+    "defaultFrameDurationMs": 100,
+    "defaultFps": 10.0,
+    "fpsMayBeFractional": true
+  },
+  "frameGeneration": {
+    "method": "stronger deterministic stack motion followed by baked ping-pong sequence: source frames forward, 50% in-betweens, then reverse in-betweens back toward frame 0",
+    "loopClosure": "last frame is a 50% blend from source frame 1 to source frame 0, so the next frame 0 continues without a distant endpoint jump",
+    "motionAmplification": "per-row anchored translate and squash/stretch transforms make breathing, drag, hop, slump, waiting, work, and review states more distinct while preserving the six-cat stack identity",
+    "sourceFramePlacement": "not all source frames are at even columns because the reverse half omits duplicate endpoints"
+  },
+  "actions": [
+    {
+      "id": "idle",
+      "rowIndex": 0,
+      "frameCount": 20,
+      "sourceFrameCount": 6,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.0,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "calm resting with visible breathing and scattered blinks",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        }
+      ]
+    },
+    {
+      "id": "running-right",
+      "rowIndex": 1,
+      "frameCount": 28,
+      "sourceFrameCount": 8,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.8,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "rightward drag with stronger stack sway",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "forward",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 7,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 7,
+          "phase": "forward",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 7,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 20
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 21
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 22
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 23
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 24
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 25
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 26
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 27
+        }
+      ]
+    },
+    {
+      "id": "running-left",
+      "rowIndex": 2,
+      "frameCount": 28,
+      "sourceFrameCount": 8,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.8,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "leftward drag with stronger stack sway",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "forward",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 7,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 7,
+          "phase": "forward",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 7,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 20
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 21
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 22
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 23
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 24
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 25
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 26
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 27
+        }
+      ]
+    },
+    {
+      "id": "waving",
+      "rowIndex": 3,
+      "frameCount": 12,
+      "sourceFrameCount": 4,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 1.2,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "small top-cat greeting wobble",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 11
+        }
+      ]
+    },
+    {
+      "id": "jumping",
+      "rowIndex": 4,
+      "frameCount": 9,
+      "sourceFrameCount": 5,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 0.9,
+      "loop": false,
+      "loopMode": "ping-pong-baked",
+      "description": "clear compression, lift, peak, descent, settle",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        }
+      ]
+    },
+    {
+      "id": "failed",
+      "rowIndex": 5,
+      "frameCount": 28,
+      "sourceFrameCount": 8,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.8,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "visible slump and recovery",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "forward",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 7,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 7,
+          "phase": "forward",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 7,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 20
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 21
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 22
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 23
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 24
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 25
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 26
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 27
+        }
+      ]
+    },
+    {
+      "id": "waiting",
+      "rowIndex": 6,
+      "frameCount": 20,
+      "sourceFrameCount": 6,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.0,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "expectant bob while waiting for input",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        }
+      ]
+    },
+    {
+      "id": "running",
+      "rowIndex": 7,
+      "frameCount": 20,
+      "sourceFrameCount": 6,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.0,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "active work wobble and processing bounce",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "rowIndex": 8,
+      "frameCount": 20,
+      "sourceFrameCount": 6,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.0,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "focused lean and settle",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        }
+      ]
+    },
+    {
+      "id": "look-000-to-157.5",
+      "rowIndex": 9,
+      "frameCount": 28,
+      "sourceFrameCount": 8,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.8,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "clockwise look directions from up through down-right",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "forward",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 7,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 7,
+          "phase": "forward",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 7,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 20
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 21
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 22
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 23
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 24
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 25
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 26
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 27
+        }
+      ]
+    },
+    {
+      "id": "look-180-to-337.5",
+      "rowIndex": 10,
+      "frameCount": 28,
+      "sourceFrameCount": 8,
+      "frameDurationMs": 100,
+      "fps": 10.0,
+      "durationSeconds": 2.8,
+      "loop": true,
+      "loopMode": "ping-pong-baked",
+      "description": "clockwise look directions from down through up-left",
+      "frames": [
+        {
+          "kind": "source",
+          "sourceIndex": 0,
+          "phase": "forward",
+          "columnIndex": 0
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 0,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 1
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "forward",
+          "columnIndex": 2
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 3
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "forward",
+          "columnIndex": 4
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 5
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "forward",
+          "columnIndex": 6
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 7
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "forward",
+          "columnIndex": 8
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 9
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "forward",
+          "columnIndex": 10
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 11
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "forward",
+          "columnIndex": 12
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 7,
+          "t": 0.5,
+          "phase": "forward",
+          "columnIndex": 13
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 7,
+          "phase": "forward",
+          "columnIndex": 14
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 7,
+          "toSourceIndex": 6,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 15
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 6,
+          "phase": "reverse",
+          "columnIndex": 16
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 6,
+          "toSourceIndex": 5,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 17
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 5,
+          "phase": "reverse",
+          "columnIndex": 18
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 5,
+          "toSourceIndex": 4,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 19
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 4,
+          "phase": "reverse",
+          "columnIndex": 20
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 4,
+          "toSourceIndex": 3,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 21
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 3,
+          "phase": "reverse",
+          "columnIndex": 22
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 3,
+          "toSourceIndex": 2,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 23
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 2,
+          "phase": "reverse",
+          "columnIndex": 24
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 2,
+          "toSourceIndex": 1,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 25
+        },
+        {
+          "kind": "source",
+          "sourceIndex": 1,
+          "phase": "reverse",
+          "columnIndex": 26
+        },
+        {
+          "kind": "inbetween",
+          "fromSourceIndex": 1,
+          "toSourceIndex": 0,
+          "t": 0.5,
+          "phase": "reverse",
+          "columnIndex": 27
+        }
+      ]
+    }
+  ],
+  "recommendedRenderer": {
+    "frameLookup": "Use actions[].rowIndex and actions[].frameCount; do not assume every row uses all columns.",
+    "frameRect": {
+      "x": "columnIndex * cell.width",
+      "y": "rowIndex * cell.height",
+      "width": "cell.width",
+      "height": "cell.height"
+    },
+    "transparentUnusedCells": true,
+    "looping": "Play columns 0 through frameCount-1, then wrap to column 0. Do not apply extra ping-pong logic; it is already baked.",
+    "timing": "Prefer frameDurationMs for exact scheduling; fps is provided for convenience and may be fractional."
+  },
+  "artifacts": {
+    "contactSheet": "contact-sheet-seamless.png",
+    "previewDir": "previews/",
+    "standardMotionReport": "motion-report-standard.json"
+  },
+  "standardInstall": {
+    "spritesheetPath": "/Users/Z002QVV/.codex/pets/cat-stack/spritesheet.webp",
+    "pngPath": "/Users/Z002QVV/.codex/pets/cat-stack/spritesheet.png",
+    "codexCompatible": true,
+    "columns": 8,
+    "rows": 11
+  }
+}

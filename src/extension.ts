@@ -15,6 +15,14 @@ interface Pet {
   folderName: string;
   manifest: PetManifest;
   folder: vscode.Uri;
+  hasSeamlessVariant: boolean;
+}
+
+const SEAMLESS_SPRITESHEET_PATH = 'nonstandard-seamless/spritesheet-seamless.webp';
+const SEAMLESS_CONFIG_PATH = 'nonstandard-seamless/spritesheet-seamless.json';
+
+function useSeamlessSprites(): boolean {
+  return vscode.workspace.getConfiguration('codexPet').get<boolean>('useSeamlessSprites', false);
 }
 
 const LAST_PET_KEY = 'codexPet.lastPetId';
@@ -45,24 +53,25 @@ function getTimingConfig(): TimingConfig {
   return {
     walkSpeed: config.get<number>('walkSpeed', 40),
     moveChance: config.get<number>('moveChance', 0.5),
-    minActionDuration: config.get<number>('minActionDuration', 1500),
-    maxActionDuration: config.get<number>('maxActionDuration', 3500),
+    // Settings are authored in seconds; the webview works in milliseconds.
+    minActionDuration: config.get<number>('minActionSeconds', 3) * 1000,
+    maxActionDuration: config.get<number>('maxActionSeconds', 10) * 1000,
     jumpCooldown: config.get<number>('jumpCooldown', 5000),
-    idleAnimationSpeed: config.get<number>('idleAnimationSpeed', 1),
+    idleAnimationSpeed: config.get<number>('idleAnimationSpeed', 0.5),
   };
 }
 
 const TIMING_SETTINGS = [
   'codexPet.walkSpeed',
   'codexPet.moveChance',
-  'codexPet.minActionDuration',
-  'codexPet.maxActionDuration',
+  'codexPet.minActionSeconds',
+  'codexPet.maxActionSeconds',
   'codexPet.jumpCooldown',
   'codexPet.idleAnimationSpeed',
 ];
 
 function getPetScale(): number {
-  return vscode.workspace.getConfiguration('codexPet').get<number>('petScale', 1);
+  return vscode.workspace.getConfiguration('codexPet').get<number>('petScale', 2);
 }
 
 function getIdleStateWeights(): Record<string, number> {
@@ -85,8 +94,8 @@ interface PetGrowthConfig {
 function getPetGrowthConfig(): PetGrowthConfig {
   const config = vscode.workspace.getConfiguration('codexPet');
   return {
-    enabled: config.get<boolean>('petGrowthEnabled', false),
-    minScale: config.get<number>('petGrowthMinScale', 0.7),
+    enabled: config.get<boolean>('petGrowthEnabled', true),
+    minScale: config.get<number>('petGrowthMinScale', 0.5),
     maxScale: config.get<number>('petGrowthMaxScale', 1.5),
     maxLevel: config.get<number>('petGrowthMaxLevel', 20),
   };
@@ -690,7 +699,15 @@ async function readPetsFrom(petsDir: vscode.Uri): Promise<Pet[]> {
     try {
       const bytes = await vscode.workspace.fs.readFile(manifestUri);
       const manifest = JSON.parse(Buffer.from(bytes).toString('utf8')) as PetManifest;
-      pets.push({ folderName: name, manifest, folder });
+      let hasSeamlessVariant = false;
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.joinPath(folder, SEAMLESS_SPRITESHEET_PATH));
+        await vscode.workspace.fs.stat(vscode.Uri.joinPath(folder, SEAMLESS_CONFIG_PATH));
+        hasSeamlessVariant = true;
+      } catch {
+        hasSeamlessVariant = false;
+      }
+      pets.push({ folderName: name, manifest, folder, hasSeamlessVariant });
     } catch {
       continue;
     }
@@ -1083,7 +1100,7 @@ interface AiState {
 function getWaitingStaleMs(): number {
   const minutes = vscode.workspace
     .getConfiguration('codexPet')
-    .get<number>('waitingStaleMinutes', 240);
+    .get<number>('waitingStaleMinutes', 15);
   return minutes * 60 * 1000;
 }
 
@@ -1138,7 +1155,7 @@ function computeAiState(): AiState {
 function getAiActivitySources(): string[] {
   return vscode.workspace
     .getConfiguration('codexPet')
-    .get<string[]>('aiActivitySources', ['claude-code']);
+    .get<string[]>('aiActivitySources', ['claude-code', 'copilot']);
 }
 
 // GitHub Copilot Chat has no hooks/lifecycle API to report activity like Claude
@@ -1435,6 +1452,13 @@ export async function activate(context: vscode.ExtensionContext) {
       if (PET_GROWTH_SETTINGS.some((setting) => e.affectsConfiguration(setting))) {
         for (const provider of providers) provider.postPetGrowthUpdate(getPetGrowthConfig());
       }
+
+      if (e.affectsConfiguration('codexPet.useSeamlessSprites')) {
+        resolvePets(context, xpManager, false).then((pets) => {
+          if (pets.length === 0) return;
+          for (const provider of providers) provider.showPets(pets);
+        });
+      }
     }),
   );
 }
@@ -1452,14 +1476,23 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pets:
 
   const scriptUri = mediaUri('main.js');
   const styleUri = mediaUri('main.css');
-  const configUri = mediaUri('sprite-config.json');
-  const petDefs = pets.map((pet) => ({
-    id: pet.manifest.id,
-    spriteUri: webview
-      .asWebviewUri(vscode.Uri.joinPath(pet.folder, pet.manifest.spritesheetPath))
-      .toString(),
-    configUri: configUri.toString(),
-  }));
+  const defaultConfigUri = mediaUri('sprite-config.json');
+  const wantSeamless = useSeamlessSprites();
+  const petDefs = pets.map((pet) => {
+    const useSeamless = wantSeamless && pet.hasSeamlessVariant;
+    const spritesheetPath = useSeamless ? SEAMLESS_SPRITESHEET_PATH : pet.manifest.spritesheetPath;
+    return {
+      id: pet.manifest.id,
+      spriteUri: webview.asWebviewUri(vscode.Uri.joinPath(pet.folder, spritesheetPath)).toString(),
+      configUri: useSeamless
+        ? webview.asWebviewUri(vscode.Uri.joinPath(pet.folder, SEAMLESS_CONFIG_PATH)).toString()
+        : defaultConfigUri.toString(),
+      // Always the standard manifest, even when an alternate one is active,
+      // so the renderer can scale an alternate sheet's own cell size to
+      // match the on-screen footprint the standard manifest defines.
+      standardConfigUri: defaultConfigUri.toString(),
+    };
+  });
   const timing = getTimingConfig();
   const petScale = getPetScale();
   const idleStateWeights = getIdleStateWeights();

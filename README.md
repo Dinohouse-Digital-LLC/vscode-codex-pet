@@ -144,18 +144,19 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.selectedPets`         | `[]`    | Pet ids/folder names to show at once, in draw order. Takes precedence over `selectedPet`. Capped by your unlocked slot count (see "Choose Pets..." above); extra entries are ignored. |
 | `codexPet.walkSpeed`            | `40`    | Pixels/second while running.                                                  |
 | `codexPet.moveChance`           | `0.5`   | Probability (0-1) of starting a move vs. a stationary animation each cycle.   |
-| `codexPet.minActionDuration`    | `1500`  | Minimum ms spent in one action before picking a new one.                     |
-| `codexPet.maxActionDuration`    | `3500`  | Maximum ms spent in one action before picking a new one.                     |
-| `codexPet.idleAnimationSpeed`   | `1`     | Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). Doesn't affect walk/run. |
-| `codexPet.aiActivitySources`    | `["claude-code"]` | Which AI tools trigger the busy animation + speech bubble: `claude-code`, `copilot` (experimental heuristic), both, or empty to disable. See below. |
-| `codexPet.waitingStaleMinutes`  | `240` (4h) | How long (minutes) a Claude Code session can sit in the "waiting for you" state before its badge entry is dropped as stale (crash cleanup only — doesn't affect normal waiting). |
+| `codexPet.minActionSeconds`     | `3`     | Minimum seconds spent in one action before picking a new one.               |
+| `codexPet.maxActionSeconds`     | `10`    | Maximum seconds spent in one action before picking a new one.               |
+| `codexPet.idleAnimationSpeed`   | `0.5`   | Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). Doesn't affect walk/run. |
+| `codexPet.aiActivitySources`    | `["claude-code","copilot"]` | Which AI tools trigger the busy animation + speech bubble: `claude-code`, `copilot` (experimental heuristic), both, or empty to disable. See below. |
+| `codexPet.waitingStaleMinutes`  | `15`    | How long (minutes) a Claude Code session can sit in the "waiting for you" state before its badge entry is dropped as stale (crash cleanup only — doesn't affect normal waiting). |
 | `codexPet.xpEnabled`            | `true`  | Whether the pet earns XP/levels from coding activity (AI tool activity, editor edits, terminal use, git commits, clicks). Progress (and level) is tracked separately per pet. |
-| `codexPet.petGrowthEnabled`     | `false` | Whether the pet's sprite size grows with its level, from `petGrowthMinScale` at level 1 up to `petGrowthMaxScale` at `petGrowthMaxLevel`. Both are multipliers of `codexPet.petScale`. Requires `xpEnabled`. |
-| `codexPet.petGrowthMinScale`    | `0.7`   | Size multiplier at level 1, when growth is enabled. |
+| `codexPet.petGrowthEnabled`     | `true`  | Whether the pet's sprite size grows with its level, from `petGrowthMinScale` at level 1 up to `petGrowthMaxScale` at `petGrowthMaxLevel`. Both are multipliers of `codexPet.petScale`. Requires `xpEnabled`. |
+| `codexPet.petGrowthMinScale`    | `0.5`   | Size multiplier at level 1, when growth is enabled. |
 | `codexPet.petGrowthMaxScale`    | `1.5`   | Size multiplier at `petGrowthMaxLevel`, when growth is enabled. |
 | `codexPet.petGrowthMaxLevel`    | `20`    | Level at which the pet reaches `petGrowthMaxScale`. Growth is linear from level 1, then caps. |
+| `codexPet.useSeamlessSprites`   | `false` | Use each pet's `nonstandard-seamless` spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available. |
 
-Timing settings (`walkSpeed`, `moveChance`, `min/maxActionDuration`) apply live
+Timing settings (`walkSpeed`, `moveChance`, `min/maxActionSeconds`) apply live
 to an already-open view — no reload needed. Changing `selectedPet` swaps the
 pet in the open view immediately too.
 
@@ -190,7 +191,7 @@ frame.
 
 ## Current behavior
 
-- Every `minActionDuration`-`maxActionDuration` ms, randomly either starts
+- Every `minActionSeconds`-`maxActionSeconds` seconds, randomly either starts
   moving (using the `runRight`/`runLeft` row for the chosen direction) or
   plays a stationary animation picked from `idleStates` (`idle`, `wave`,
   `jump`, `waiting`, `review`, `failed`).

@@ -5,6 +5,22 @@ tsconfig.json
 **/*.map
 docs/**
 TODO.md
+.DS_Store
+**/.DS_Store
+*.zip
+**/*.zip
+# vsce reads only .vscodeignore once it exists (no .gitignore fallback), so
+# anything gitignored for being scratch/output must be repeated here or it
+# still ends up in the packaged VSIX. pets/_runs in particular is ~230MB of
+# working files from the sprite pipeline, not shipped pet assets.
+pets/_runs/**
 pets/**/validation-installed-*.json
+pets/**/motion-report-*.json
 # Unused duplicate: cat-stack's pet.json points at spritesheet.webp, not this.
 pets/cat-stack/spritesheet.png
+# QA/debug artifacts from the nonstandard-seamless sprite pipeline: contact
+# sheets, per-state preview gifs, and the raw PNG export (manifests point at
+# the .webp).
+pets/**/contact-sheet*.png
+pets/**/nonstandard-seamless/previews/**
+pets/**/spritesheet-seamless.png
