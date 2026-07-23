@@ -1,1 +1,2 @@
 - [ ] Multiple pets at once — [plan](docs/plans/multiple-pets.md)
+- [ ] Gamification polish (streaks, off-hours bonuses, prestige cosmetic) — [plan](docs/plans/gamification-polish.md)
