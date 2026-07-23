@@ -188,10 +188,13 @@ async function loadStreakState(context: vscode.ExtensionContext): Promise<Streak
 async function saveStreakState(context: vscode.ExtensionContext, state: StreakState): Promise<void> {
   try {
     await vscode.workspace.fs.createDirectory(context.globalStorageUri);
-    await vscode.workspace.fs.writeFile(
-      getStreakFilePath(context),
-      Buffer.from(JSON.stringify(state, null, 2)),
-    );
+    const target = getStreakFilePath(context);
+    // Write to a temp file and rename over the target so a window/host reload
+    // that kills the process mid-write can never leave a truncated/corrupt
+    // streak.json behind (which loadStreakState would otherwise treat as "no streak").
+    const tmp = vscode.Uri.joinPath(context.globalStorageUri, `streak.json.${Date.now()}.tmp`);
+    await vscode.workspace.fs.writeFile(tmp, Buffer.from(JSON.stringify(state, null, 2)));
+    await vscode.workspace.fs.rename(tmp, target, { overwrite: true });
   } catch {
     // Best-effort: if this fails, the daily streak just won't persist across sessions.
   }
@@ -338,7 +341,7 @@ class XpManager {
   // transition if this window advanced it) rather than overwriting the file
   // with a stale in-memory snapshot. Makes concurrent windows converge instead
   // of last-writer-wins clobbering each other.
-  private async flush(): Promise<void> {
+  async flush(): Promise<void> {
     const delta = this.pendingXpDelta;
     this.pendingXpDelta = {};
     if (Object.keys(delta).length > 0) {
@@ -1324,9 +1327,15 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
+// Held so deactivate() can await a final flush instead of racing extension
+// host teardown against the fire-and-forget flush in XpManager.start()'s
+// Disposable, which could otherwise leave a truncated streak.json behind.
+let activeXpManager: XpManager | undefined;
+
 export async function activate(context: vscode.ExtensionContext) {
   const providers: CodexPetViewProvider[] = [];
   const xpManager = new XpManager(context, providers);
+  activeXpManager = xpManager;
   const sidebarProvider = new CodexPetViewProvider(
     context,
     'workbench.view.extension.codexPetContainer',
@@ -1366,7 +1375,11 @@ export async function activate(context: vscode.ExtensionContext) {
       if (pets.length > 0) {
         const location = getLocation();
         (location === 'sidebar' ? sidebarProvider : panelProvider).reveal();
-        for (const provider of providers) provider.showPets(pets);
+        const streakInfo = xpManager.getStreakInfo();
+        for (const provider of providers) {
+          provider.showPets(pets);
+          provider.postStreakUpdate(streakInfo);
+        }
       }
     }),
     // Kept as an alias so existing keybindings/muscle memory still work; the
@@ -1393,11 +1406,15 @@ export async function activate(context: vscode.ExtensionContext) {
         resolvePets(context, xpManager, false).then((pets) => {
           if (pets.length === 0) return;
           const newIds = pets.map((pet) => pet.manifest.id);
+          const streakInfo = xpManager.getStreakInfo();
           for (const provider of providers) {
             const sameIds =
               provider.currentPetIds.length === newIds.length &&
               provider.currentPetIds.every((id, i) => id === newIds[i]);
-            if (!sameIds) provider.showPets(pets);
+            if (!sameIds) {
+              provider.showPets(pets);
+              provider.postStreakUpdate(streakInfo);
+            }
           }
         });
         return;
@@ -1422,8 +1439,11 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 }
 
-export function deactivate() {
-  // Nothing to clean up: the webview view is disposed by VS Code automatically.
+export async function deactivate() {
+  // The webview view itself is disposed by VS Code automatically; this just
+  // makes sure the pending streak/XP write actually lands before the host
+  // tears down, instead of racing it (see XpManager.start()'s Disposable).
+  await activeXpManager?.flush();
 }
 
 function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pets: Pet[]): string {

@@ -275,7 +275,6 @@ source, and packaging/installing a local `.vsix`.
 
 ## Not implemented (see vscode-pets for reference if you want these later)
 
-- Multiple simultaneous pets shown at once (one at a time for now)
 - Persisting pet position/state across window reloads
 - Sound effects, click-to-interact, throw-ball
 - Reacting to Codex CLI activity (Claude Code is wired up via real hooks, and
