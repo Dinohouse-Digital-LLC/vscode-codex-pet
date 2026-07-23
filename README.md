@@ -31,13 +31,17 @@ View** from the Command Palette does the same thing.
 ## Commands
 
 - **Codex Pet: Reveal Pet View** (`codexPet.start`) — opens/focuses the
-  Activity Bar view. The pet shown is resolved from the `codexPet.selectedPet`
-  setting, or the last one picked via "Choose Pet...", or the only pet if
-  there's just one. If none of those resolve and multiple pets exist, prompts
-  with a picker.
-- **Codex Pet: Choose Pet...** (`codexPet.choosePet`) — always shows the
-  picker and switches the view to the chosen pet immediately, remembering the
-  choice for next time.
+  Activity Bar view. The pet(s) shown are resolved from `codexPet.selectedPets`
+  (if non-empty), then `codexPet.selectedPet`, then the last pet(s) picked via
+  "Choose Pets...", or the only pet if there's just one. If none of those
+  resolve and multiple pets exist, prompts with a picker.
+- **Codex Pet: Choose Pets...** (`codexPet.choosePets`) — shows a multi-select
+  picker and switches the view to the chosen pet(s) immediately, remembering
+  the choice for next time. How many you can select at once is gated by your
+  highest-level pet: 1 pet slot by default, a 2nd unlocks at level 5, a 3rd at
+  level 15, a 4th at level 30 — locked slots are shown in the picker (🔒) so
+  the next unlock is visible before it's reachable. `codexPet.choosePet` still
+  works as an alias for this command.
 - **Codex Pet: Open Pets Folder** (`codexPet.openPetsFolder`) — reveals your
   persistent user pets folder in Finder/Explorer (creating it if needed), so
   you can drop in a new pet folder that survives extension updates.
@@ -148,7 +152,8 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | Setting                       | Default | Description                                                                 |
 |--------------------------------|---------|------------------------------------------------------------------------------|
 | `codexPet.location`             | `panel` | Where the pet view shows: `panel` (bottom, next to Terminal), `sidebar` (Activity Bar, next to Explorer/Git), or `both` (each location runs its own independent pet). |
-| `codexPet.selectedPet`          | `""`    | Pet id or folder name under `pets/` to always load. Empty = last picked pet. |
+| `codexPet.selectedPet`          | `""`    | Pet id or folder name under `pets/` to always load. Empty = last picked pet. Ignored when `selectedPets` is non-empty. |
+| `codexPet.selectedPets`         | `[]`    | Pet ids/folder names to show at once, in draw order. Takes precedence over `selectedPet`. Capped by your unlocked slot count (see "Choose Pets..." above); extra entries are ignored. |
 | `codexPet.walkSpeed`            | `40`    | Pixels/second while running.                                                  |
 | `codexPet.moveChance`           | `0.5`   | Probability (0-1) of starting a move vs. a stationary animation each cycle.   |
 | `codexPet.minActionDuration`    | `1500`  | Minimum ms spent in one action before picking a new one.                     |
@@ -208,15 +213,19 @@ frame.
   [`media/sprite-config.json`](media/sprite-config.json)) for a fixed ~1.2s,
   with a small heart particle popping up as feedback, then resumes normal
   idle/walk behavior.
-- While the cursor is anywhere over the view, the pet runs toward it
-  horizontally instead of wandering randomly, and settles into idle once it's
-  underneath. If the cursor stops roughly above the pet, it jumps to try to
-  reach it (on a ~1.2s cooldown so it doesn't jump nonstop). Moving the
-  cursor off the view resumes normal random idle/walk behavior.
-- The pet earns XP (and levels shown as a small badge on its sprite) from
-  active coding: a minute containing AI-tool activity, an editor edit, or
-  terminal use counts once toward XP, a git commit is a flat one-off bonus,
-  and clicking the pet gives a small rate-limited bonus too. Leveling up
+- While the cursor is anywhere over the view, every shown pet runs toward it
+  horizontally instead of wandering randomly, queuing up side by side rather
+  than stacking, and settles into idle once it's underneath. If the cursor
+  stops roughly above a pet, that pet jumps to try to reach it (on its own
+  ~1.2s cooldown so it doesn't jump nonstop). Moving the cursor off the view
+  resumes normal random idle/walk behavior for all of them.
+- Each pet earns XP (and levels shown as a small badge on its sprite) from
+  active coding: a git commit is a flat one-off bonus to every shown pet, and
+  clicking a pet gives it a small rate-limited bonus. Active-minute XP (AI-tool
+  activity, editor edits, terminal use) is a shared pool across however many
+  pets are shown — it grows sublinearly with pet count (showing more pets
+  earns more total XP, but not proportionally more) and splits with catch-up
+  weighting so a lower-level pet in the group gets a bigger share. Leveling up
   plays a jump + heart celebration. Progress persists per pet across restarts
   and updates; disable with `codexPet.xpEnabled`. Optionally
   (`codexPet.petGrowthEnabled`, off by default), the pet's sprite size grows

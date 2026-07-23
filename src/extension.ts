@@ -18,6 +18,18 @@ interface Pet {
 }
 
 const LAST_PET_KEY = 'codexPet.lastPetId';
+const LAST_PET_IDS_KEY = 'codexPet.lastPetIds';
+
+// Pet slots are gated on the level of the single highest-level owned pet
+// (not a sum across pets, which would reward spreading XP thin instead of
+// rewarding the catch-up mechanic's intent). Thresholds echo the existing
+// XP curve so later slots feel earned rather than just further apart.
+const SLOT_UNLOCK_LEVELS = [5, 15, 30];
+const SLOT_ORDINALS = ['1st', '2nd', '3rd', '4th'];
+
+function getUnlockedSlotCount(highestLevel: number): number {
+  return 1 + SLOT_UNLOCK_LEVELS.filter((level) => highestLevel >= level).length;
+}
 
 interface TimingConfig {
   walkSpeed: number;
@@ -157,18 +169,40 @@ const XP_PER_CLICK = 1;
 const CLICK_XP_MIN_INTERVAL_MS = 4000;
 const ACTIVE_WINDOW_MS = 60000;
 
+// How far ahead of a shown pet's own level the catch-up split can boost its
+// share of the active-minute pool: a pet this many (or more) levels behind
+// the highest-level pet currently shown gets double weight; a pet level with
+// the group leader gets baseline weight. Clamped so the split can't degenerate
+// at large level gaps.
+const CATCH_UP_LEVEL_WINDOW = 10;
+
+interface XpUpdateEntry {
+  petId: string;
+  xp: number;
+  level: number;
+  progress: number;
+  leveledUp: boolean;
+}
+
 // Awards XP for real coding activity: any minute containing AI-tool activity,
 // an editor edit, or terminal use counts once as an "active minute" (rather
 // than per-keystroke/per-command, which would be trivially gameable and noisy
 // to listen for). Git commits are a discrete checkpoint instead, so they get a
 // flat one-off bonus. Clicks are a small supplementary source, rate-limited so
 // spam-clicking can't dominate.
+//
+// With multiple pets shown at once, active-minute XP is a shared pool that
+// scales sublinearly with pet count (rewards showing more pets without
+// letting it trivially multiply leveling speed), then split across the shown
+// pets with catch-up weighting so a fresh pet next to a maxed one closes the
+// gap. Commit XP stays flat per pet (a commit is a fixed, shared win); click
+// XP is attributed to whichever specific pet was clicked.
 class XpManager {
   private state: Record<string, XpRecord> = {};
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   private lastActivityAt = 0;
   private lastClickXpAt = 0;
-  currentPetId: string | undefined;
+  currentPetIds: string[] = [];
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -196,6 +230,18 @@ class XpManager {
     return record;
   }
 
+  getHighestLevel(): number {
+    let max = 1;
+    for (const record of Object.values(this.state)) {
+      max = Math.max(max, record.level);
+    }
+    return max;
+  }
+
+  private broadcastXpUpdate(entries: XpUpdateEntry[]): void {
+    for (const provider of this.providers) provider.postXpUpdate(entries);
+  }
+
   private award(petId: string, amount: number): void {
     if (!isXpEnabled()) return;
     const record = this.getRecord(petId);
@@ -204,48 +250,71 @@ class XpManager {
     record.level = levelForXp(record.xp);
     record.lastUpdated = Date.now();
     this.scheduleSave();
-    if (petId === this.currentPetId) {
-      for (const provider of this.providers) {
-        provider.postXpUpdate(
-          record.xp,
-          record.level,
-          xpProgress(record.xp, record.level),
-          record.level > prevLevel,
-        );
-      }
+    if (this.currentPetIds.includes(petId)) {
+      this.broadcastXpUpdate([
+        {
+          petId,
+          xp: record.xp,
+          level: record.level,
+          progress: xpProgress(record.xp, record.level),
+          leveledUp: record.level > prevLevel,
+        },
+      ]);
     }
   }
 
-  setCurrentPet(petId: string): void {
-    this.currentPetId = petId;
-    const record = this.getRecord(petId);
-    for (const provider of this.providers) {
-      provider.postXpUpdate(record.xp, record.level, xpProgress(record.xp, record.level), false);
-    }
+  setCurrentPets(petIds: string[]): void {
+    this.currentPetIds = petIds;
+    this.broadcastXpUpdate(
+      petIds.map((petId) => {
+        const record = this.getRecord(petId);
+        return {
+          petId,
+          xp: record.xp,
+          level: record.level,
+          progress: xpProgress(record.xp, record.level),
+          leveledUp: false,
+        };
+      }),
+    );
   }
 
   markActive(): void {
     this.lastActivityAt = Date.now();
   }
 
-  awardClick(): void {
-    if (!this.currentPetId) return;
+  awardClick(petId: string): void {
+    if (!this.currentPetIds.includes(petId)) return;
     const now = Date.now();
     if (now - this.lastClickXpAt < CLICK_XP_MIN_INTERVAL_MS) return;
     this.lastClickXpAt = now;
-    this.award(this.currentPetId, XP_PER_CLICK);
+    this.award(petId, XP_PER_CLICK);
   }
 
   awardCommit(): void {
-    if (this.currentPetId) this.award(this.currentPetId, XP_PER_COMMIT);
+    for (const petId of this.currentPetIds) this.award(petId, XP_PER_COMMIT);
   }
 
   start(): vscode.Disposable {
     const interval = setInterval(() => {
-      if (!this.currentPetId) return;
-      if (Date.now() - this.lastActivityAt <= ACTIVE_WINDOW_MS) {
-        this.award(this.currentPetId, XP_PER_ACTIVE_MINUTE);
-      }
+      const petIds = this.currentPetIds;
+      if (petIds.length === 0) return;
+      if (Date.now() - this.lastActivityAt > ACTIVE_WINDOW_MS) return;
+
+      // Sublinear pool: 1 pet = 2 XP/min (unchanged), 2 pets = 3, 3 pets = 4, ...
+      const pool = XP_PER_ACTIVE_MINUTE * (1 + 0.5 * (petIds.length - 1));
+
+      const levels = petIds.map((id) => this.getRecord(id).level);
+      const maxLevel = Math.max(...levels);
+      // Weight ranges from 1 (level with the group leader) to 2 (10+ levels
+      // behind), rather than an unbounded inverse-level formula that would
+      // degenerate at large level gaps.
+      const weights = levels.map((level) => 1 + Math.min(CATCH_UP_LEVEL_WINDOW, maxLevel - level) / CATCH_UP_LEVEL_WINDOW);
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+      petIds.forEach((petId, i) => {
+        this.award(petId, (pool * weights[i]) / totalWeight);
+      });
     }, ACTIVE_WINDOW_MS);
 
     return new vscode.Disposable(() => {
@@ -346,40 +415,111 @@ function findPet(pets: Pet[], id: string): Pet | undefined {
   return pets.find((p) => p.manifest.id === id || p.folderName === id);
 }
 
-async function pickPet(context: vscode.ExtensionContext, pets: Pet[]): Promise<Pet | undefined> {
-  const picked = await vscode.window.showQuickPick(
-    pets.map((pet) => ({
-      label: pet.manifest.displayName,
-      description: pet.manifest.id,
-      detail: pet.manifest.description,
-      pet,
-    })),
-    { placeHolder: 'Choose a Codex pet' },
-  );
-  if (!picked) return undefined;
-  await context.globalState.update(LAST_PET_KEY, picked.pet.manifest.id);
-  return picked.pet;
+interface PetPickItem extends vscode.QuickPickItem {
+  pet?: Pet;
 }
 
-async function resolvePet(
+function buildPetPickItems(pets: Pet[], unlockedSlots: number): PetPickItem[] {
+  const items: PetPickItem[] = pets.map((pet) => ({
+    label: pet.manifest.displayName,
+    description: pet.manifest.id,
+    detail: pet.manifest.description,
+    pet,
+  }));
+
+  // Locked slots are shown (not hidden) so the goal is visible before it's
+  // reachable, but they carry no `pet` so selecting one is a no-op.
+  SLOT_UNLOCK_LEVELS.forEach((level, i) => {
+    const slotNumber = i + 2;
+    if (slotNumber > unlockedSlots) {
+      items.push({
+        label: `🔒 ${SLOT_ORDINALS[slotNumber - 1]} pet slot unlocks at level ${level}`,
+      });
+    }
+  });
+
+  return items;
+}
+
+async function pickPets(
   context: vscode.ExtensionContext,
+  pets: Pet[],
+  unlockedSlots: number,
+): Promise<Pet[] | undefined> {
+  return new Promise((resolve) => {
+    const qp = vscode.window.createQuickPick<PetPickItem>();
+    qp.canSelectMany = true;
+    qp.placeholder = `Choose up to ${unlockedSlots} pet(s) to show at once`;
+    qp.items = buildPetPickItems(pets, unlockedSlots);
+
+    qp.onDidChangeSelection((selected) => {
+      const pickable = selected.filter((item) => item.pet);
+      if (pickable.length > unlockedSlots) {
+        qp.selectedItems = pickable.slice(0, unlockedSlots);
+      }
+    });
+
+    let resolved = false;
+    qp.onDidAccept(async () => {
+      const chosen = qp.selectedItems.filter((item) => item.pet).map((item) => item.pet as Pet);
+      if (chosen.length > 0) {
+        await context.globalState.update(
+          LAST_PET_IDS_KEY,
+          chosen.map((pet) => pet.manifest.id),
+        );
+      }
+      resolved = true;
+      qp.hide();
+      resolve(chosen.length > 0 ? chosen : undefined);
+    });
+    qp.onDidHide(() => {
+      qp.dispose();
+      if (!resolved) resolve(undefined);
+    });
+    qp.show();
+  });
+}
+
+async function resolvePets(
+  context: vscode.ExtensionContext,
+  xpManager: XpManager,
   forcePick: boolean,
-): Promise<Pet | undefined> {
+): Promise<Pet[]> {
   const pets = await listPets(context);
   if (pets.length === 0) {
     vscode.window.showErrorMessage(
       'Codex Pet: no pet found. Add a pet.json + spritesheet.webp under pets/<pet-id>/ (use "Codex Pet: Open Pets Folder" for a location that survives updates).',
     );
-    return undefined;
+    return [];
   }
 
+  const unlockedSlots = getUnlockedSlotCount(xpManager.getHighestLevel());
+
   if (!forcePick) {
+    const configuredPets = vscode.workspace
+      .getConfiguration('codexPet')
+      .get<string[]>('selectedPets', []);
+    if (configuredPets.length > 0) {
+      const matches = configuredPets
+        .map((id) => findPet(pets, id))
+        .filter((pet): pet is Pet => Boolean(pet));
+      if (matches.length > 0) return matches.slice(0, unlockedSlots);
+    }
+
+    const lastIds = context.globalState.get<string[]>(LAST_PET_IDS_KEY);
+    if (lastIds && lastIds.length > 0) {
+      const matches = lastIds
+        .map((id) => findPet(pets, id))
+        .filter((pet): pet is Pet => Boolean(pet));
+      if (matches.length > 0) return matches.slice(0, unlockedSlots);
+    }
+
     const configured = vscode.workspace
       .getConfiguration('codexPet')
       .get<string>('selectedPet');
     if (configured) {
       const match = findPet(pets, configured);
-      if (match) return match;
+      if (match) return [match];
       vscode.window.showWarningMessage(
         `Codex Pet: configured pet "${configured}" was not found under pets/. Falling back.`,
       );
@@ -388,15 +528,16 @@ async function resolvePet(
     const lastId = context.globalState.get<string>(LAST_PET_KEY);
     if (lastId) {
       const match = findPet(pets, lastId);
-      if (match) return match;
+      if (match) return [match];
     }
 
     if (pets.length === 1) {
-      return pets[0];
+      return [pets[0]];
     }
   }
 
-  return pickPet(context, pets);
+  const picked = await pickPets(context, pets, unlockedSlots);
+  return picked ?? [];
 }
 
 // AI activity tracking: external tools (Claude Code hooks, etc.) report
@@ -496,7 +637,7 @@ process.stdin.on("end", () => {
   let title = existing.title || null;
   if (!title && payload.prompt) {
     title = String(payload.prompt).trim().replace(/\\s+/g, " ");
-    if (title.length > 60) title = title.slice(0, 57) + "...";
+    if (title.length > 20) title = title.slice(0, 17) + "...";
   }
 
   fs.writeFileSync(file, JSON.stringify({
@@ -813,7 +954,7 @@ async function updateLocationContext(): Promise<void> {
 
 class CodexPetViewProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
-  currentPetId: string | undefined;
+  currentPetIds: string[] = [];
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -827,11 +968,13 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
       this.view = undefined;
     });
     webviewView.webview.onDidReceiveMessage((message) => {
-      if (message?.type === 'pet-click') this.xpManager.awardClick();
+      if (message?.type === 'pet-click' && typeof message.petId === 'string') {
+        this.xpManager.awardClick(message.petId);
+      }
     });
-    resolvePet(this.context, false).then((pet) => {
-      if (pet) {
-        this.showPet(pet);
+    resolvePets(this.context, this.xpManager, false).then((pets) => {
+      if (pets.length > 0) {
+        this.showPets(pets);
         const state = computeAiState();
         this.postAiState(state.busy, state.label, state.waiting);
       }
@@ -842,18 +985,18 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     vscode.commands.executeCommand(this.containerCommand);
   }
 
-  showPet(pet: Pet): void {
+  showPets(pets: Pet[]): void {
     if (!this.view) return;
-    this.currentPetId = pet.manifest.id;
+    this.currentPetIds = pets.map((pet) => pet.manifest.id);
     this.view.webview.options = {
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.joinPath(this.context.extensionUri, 'media'),
-        pet.folder,
+        ...pets.map((pet) => pet.folder),
       ],
     };
-    this.view.webview.html = getWebviewHtml(this.view.webview, this.context.extensionUri, pet);
-    this.xpManager.setCurrentPet(pet.manifest.id);
+    this.view.webview.html = getWebviewHtml(this.view.webview, this.context.extensionUri, pets);
+    this.xpManager.setCurrentPets(this.currentPetIds);
   }
 
   postTimingUpdate(timing: TimingConfig): void {
@@ -872,8 +1015,8 @@ class CodexPetViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: 'ai-state', busy, label, waiting: waiting ?? [] });
   }
 
-  postXpUpdate(xp: number, level: number, progress: number, leveledUp: boolean): void {
-    this.view?.webview.postMessage({ type: 'xp-update', xp, level, progress, leveledUp });
+  postXpUpdate(pets: XpUpdateEntry[]): void {
+    this.view?.webview.postMessage({ type: 'xp-update', pets });
   }
 
   postPetGrowthUpdate(growth: PetGrowthConfig): void {
@@ -917,14 +1060,20 @@ export async function activate(context: vscode.ExtensionContext) {
       const location = getLocation();
       (location === 'sidebar' ? sidebarProvider : panelProvider).reveal();
     }),
-    vscode.commands.registerCommand('codexPet.choosePet', async () => {
-      const pet = await resolvePet(context, true);
-      if (pet) {
+    vscode.commands.registerCommand('codexPet.choosePets', async () => {
+      const pets = await resolvePets(context, xpManager, true);
+      if (pets.length > 0) {
         const location = getLocation();
         (location === 'sidebar' ? sidebarProvider : panelProvider).reveal();
-        for (const provider of providers) provider.showPet(pet);
+        for (const provider of providers) provider.showPets(pets);
       }
     }),
+    // Kept as an alias so existing keybindings/muscle memory still work; the
+    // multi-select QuickPick subsumes the single-pick case (picking one item
+    // is just checking one box).
+    vscode.commands.registerCommand('codexPet.choosePet', () =>
+      vscode.commands.executeCommand('codexPet.choosePets'),
+    ),
     vscode.commands.registerCommand('codexPet.installClaudeCodeHooks', installClaudeCodeHooks),
     vscode.commands.registerCommand('codexPet.openPetsFolder', async () => {
       const petsDir = getUserPetsDir(context);
@@ -936,11 +1085,18 @@ export async function activate(context: vscode.ExtensionContext) {
         updateLocationContext();
       }
 
-      if (e.affectsConfiguration('codexPet.selectedPet')) {
-        resolvePet(context, false).then((pet) => {
-          if (!pet) return;
+      if (
+        e.affectsConfiguration('codexPet.selectedPet') ||
+        e.affectsConfiguration('codexPet.selectedPets')
+      ) {
+        resolvePets(context, xpManager, false).then((pets) => {
+          if (pets.length === 0) return;
+          const newIds = pets.map((pet) => pet.manifest.id);
           for (const provider of providers) {
-            if (pet.manifest.id !== provider.currentPetId) provider.showPet(pet);
+            const sameIds =
+              provider.currentPetIds.length === newIds.length &&
+              provider.currentPetIds.every((id, i) => id === newIds[i]);
+            if (!sameIds) provider.showPets(pets);
           }
         });
         return;
@@ -969,22 +1125,27 @@ export function deactivate() {
   // Nothing to clean up: the webview view is disposed by VS Code automatically.
 }
 
-function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pet: Pet): string {
+function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pets: Pet[]): string {
   const mediaUri = (file: string) =>
     webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', file));
 
   const scriptUri = mediaUri('main.js');
   const styleUri = mediaUri('main.css');
-  const spriteUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(pet.folder, pet.manifest.spritesheetPath),
-  );
   const configUri = mediaUri('sprite-config.json');
+  const petDefs = pets.map((pet) => ({
+    id: pet.manifest.id,
+    spriteUri: webview
+      .asWebviewUri(vscode.Uri.joinPath(pet.folder, pet.manifest.spritesheetPath))
+      .toString(),
+    configUri: configUri.toString(),
+  }));
   const timing = getTimingConfig();
   const petScale = getPetScale();
   const idleStateWeights = getIdleStateWeights();
   const petGrowth = getPetGrowthConfig();
 
   const nonce = getNonce();
+  const title = pets.map((pet) => pet.manifest.displayName).join(' & ') || 'Codex Pet';
 
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -995,7 +1156,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pet: 
     content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'; connect-src ${webview.cspSource};"
   />
   <link href="${styleUri}" rel="stylesheet" />
-  <title>${pet.manifest.displayName}</title>
+  <title>${title}</title>
 </head>
 <body>
   <div id="pet-stage">
@@ -1003,8 +1164,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pet: 
   </div>
   <script nonce="${nonce}">
     window.CODEX_PET = {
-      spriteUri: "${spriteUri}",
-      configUri: "${configUri}",
+      pets: ${JSON.stringify(petDefs)},
       timing: ${JSON.stringify(timing)},
       scale: ${JSON.stringify(petScale)},
       idleStateWeights: ${JSON.stringify(idleStateWeights)},

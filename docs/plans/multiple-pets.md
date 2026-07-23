@@ -100,70 +100,69 @@ multi-pet rendering from working, so they're tracked separately.
 ## Checklist
 
 ### Phase 1 — extension host (src/extension.ts)
-- [ ] Add `codexPet.selectedPets` setting (package.json) and a new
+- [x] Add `codexPet.selectedPets` setting (package.json) and a new
       `codexPet.lastPetIds` globalState key.
-- [ ] Change `resolvePet`/`pickPet` into `resolvePets`/`pickPets` returning
+- [x] Change `resolvePet`/`pickPet` into `resolvePets`/`pickPets` returning
       `Pet[]`, applying the `selectedPets` → `lastPetIds` → single-pet
       fallback precedence described above.
-- [ ] Add `codexPet.choosePets` command using
-      `showQuickPick(..., { canPickMany: true })`; keep `codexPet.choosePet`
-      working for the single-pet case (or fold it into `choosePets` if a
-      single-select affordance turns out unnecessary — decide once the
-      multi-select QuickPick is in place).
-- [ ] Update `CodexPetViewProvider.showPet` → `showPets(pets: Pet[])`;
+- [x] Add `codexPet.choosePets` command using
+      `createQuickPick` with `canSelectMany`; kept `codexPet.choosePet` as an
+      alias delegating to `choosePets` (a single-select affordance turned out
+      unnecessary — picking one item is just checking one box).
+- [x] Update `CodexPetViewProvider.showPet` → `showPets(pets: Pet[])`;
       `currentPetId` → `currentPetIds: string[]`.
-- [ ] Update `localResourceRoots` to include every selected pet's folder,
+- [x] Update `localResourceRoots` to include every selected pet's folder,
       not just one.
-- [ ] Update the `codexPet.selectedPet`/`selectedPets` config-change listener
+- [x] Update the `codexPet.selectedPet`/`selectedPets` config-change listener
       to re-resolve and reload when either setting changes.
 
 ### Phase 2 — webview bootstrap (getWebviewHtml in extension.ts)
-- [ ] Replace the single `spriteUri`/`configUri` injection with
+- [x] Replace the single `spriteUri`/`configUri` injection with
       `window.CODEX_PET.pets = [{ id, spriteUri, configUri }, ...]`.
-- [ ] Confirm CSP (`img-src`/`connect-src`) still covers all pet folders
+- [x] Confirm CSP (`img-src`/`connect-src`) still covers all pet folders
       under the multi-root `localResourceRoots`.
 
 ### Phase 3 — media/main.js instance refactor
-- [ ] Extract current module-level pet state into a `createPetInstance(petDef)`
+- [x] Extract current module-level pet state into a `createPetInstance(petDef)`
       factory (state fields listed in Background).
-- [ ] Load each instance's `config.json` + spritesheet independently
+- [x] Load each instance's `config.json` + spritesheet independently
       (parallel `Promise.all`); spread initial `x` positions across the
       canvas width instead of all starting at `x = 40`.
-- [ ] Rewrite `tick()` to loop over the instance array for update + draw;
+- [x] Rewrite `tick()` to loop over the instance array for update + draw;
       draw order = array order (later = on top).
-- [ ] Keep `timing`, `userScale`, `idleStateWeights`, `aiBusy` as shared
+- [x] Keep `timing`, `userScale`, `idleStateWeights`, `aiBusy` as shared
       globals broadcast to every instance; keep `jumpCooldown` and all other
       per-pet state on the instance.
 
 ### Phase 4 — interaction (click/mousemove/cursor-chase)
-- [ ] Update click/mousemove hit-testing to iterate instances top-to-bottom
+- [x] Update click/mousemove hit-testing to iterate instances top-to-bottom
       (reverse draw order) and act on the first `petBox` match only.
-- [ ] Implement chase-with-separation: each instance targets
+- [x] Implement chase-with-separation: each instance targets
       `cursorX + (i - (n-1)/2) * spacing` (see Background for `spacing`
       derivation) instead of `cursorX` directly.
-- [ ] Verify jump-over-cursor still triggers per-instance off each pet's own
+- [x] Verify jump-over-cursor still triggers per-instance off each pet's own
       offset target and cooldown, not a shared one.
 
 ### Phase 5 — XP integration (see decision above)
-- [ ] Rename `currentPetId` → `currentPetIds: string[]` on `XpManager`;
+- [x] Rename `currentPetId` → `currentPetIds: string[]` on `XpManager`;
       `setCurrentPet` → `setCurrentPets(petIds: string[])`.
-- [ ] Change `postXpUpdate` to send a batch `'xp-update'` message
+- [x] Change `postXpUpdate` to send a batch `'xp-update'` message
       (`pets: [{ petId, xp, level, progress, leveledUp }, ...]`); update
       `media/main.js` to render one level badge per pet instance.
-- [ ] Add `petId` to the `pet-click` webview message (from Phase 4's
+- [x] Add `petId` to the `pet-click` webview message (from Phase 4's
       per-instance hit testing) and have `awardClick` use it instead of a
       single implicit current pet.
-- [ ] Change `awardCommit` to award `XP_PER_COMMIT` to every pet in
+- [x] Change `awardCommit` to award `XP_PER_COMMIT` to every pet in
       `currentPetIds`.
-- [ ] Replace the flat `XP_PER_ACTIVE_MINUTE` award in `start()`'s interval
+- [x] Replace the flat `XP_PER_ACTIVE_MINUTE` award in `start()`'s interval
       with the sublinear pool formula, split across `currentPetIds` via
       level-gap catch-up weighting (clamped to a 10-level window).
-- [ ] Add slot-unlock thresholds (level 5 / 15 / 30 → 2/3/4 slots) and
+- [x] Add slot-unlock thresholds (level 5 / 15 / 30 → 2/3/4 slots) and
       enforce them by truncating `selectedPets` in `resolvePets`.
-- [ ] Show locked slots as disabled "🔒 unlocks at level N" entries in the
+- [x] Show locked slots as disabled "🔒 unlocks at level N" entries in the
       `choosePets` QuickPick.
 
 ### Phase 6 — docs
-- [ ] Update [README.md](../../README.md) settings table with
+- [x] Update [README.md](../../README.md) settings table with
       `codexPet.selectedPets` and the `choosePets` command, and document the
       slot-unlock thresholds and shared active-minute pool.

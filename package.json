@@ -61,6 +61,10 @@
         "title": "Codex Pet: Reveal Pet View"
       },
       {
+        "command": "codexPet.choosePets",
+        "title": "Codex Pet: Choose Pets..."
+      },
+      {
         "command": "codexPet.choosePet",
         "title": "Codex Pet: Choose Pet..."
       },
@@ -94,7 +98,15 @@
         "codexPet.selectedPet": {
           "type": "string",
           "default": "",
-          "description": "Pet id or folder name under pets/ to load. Leave empty to use the last pet picked via \"Codex Pet: Choose Pet...\" (or the only pet, if just one exists)."
+          "description": "Pet id or folder name under pets/ to load. Leave empty to use the last pet picked via \"Codex Pet: Choose Pet...\" (or the only pet, if just one exists). Ignored when codexPet.selectedPets is non-empty."
+        },
+        "codexPet.selectedPets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Pet ids or folder names under pets/ to show at once, in draw order. Takes precedence over codexPet.selectedPet when non-empty. How many can actually be shown simultaneously is gated by your highest-level pet (2 at level 5, 3 at level 15, 4 at level 30) — extra entries beyond your unlocked slot count are ignored. Set via \"Codex Pet: Choose Pets...\"."
         },
         "codexPet.walkSpeed": {
           "type": "number",
