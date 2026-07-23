@@ -16,18 +16,6 @@ id as a bundled one takes precedence. If no pet is found, or its spritesheet
 fails to load, the pet renders as a placeholder blob so the
 movement/animation logic is still visible.
 
-## Run it
-
-```bash
-npm install
-npm run compile
-```
-
-Then press F5 in VS Code (or "Run Extension" in the debug panel) to launch an
-Extension Development Host. A paw icon appears in the Activity Bar (the far
-left icon strip) — click it to reveal the pet view. **Codex Pet: Reveal Pet
-View** from the Command Palette does the same thing.
-
 ## Commands
 
 - **Codex Pet: Reveal Pet View** (`codexPet.start`) — opens/focuses the
@@ -252,17 +240,38 @@ frame.
   These stack freely (no combined ceiling) — commit XP and click XP are
   unaffected either way.
 
-## Installing as a real (non-dev-host) extension
+## Privacy & Security
 
-```bash
-npm run install-extension
-```
+Codex Pet makes no network requests — no analytics, telemetry, or
+third-party services, and no runtime dependencies at all. Everything it does
+stays on your machine:
 
-This packages a `.vsix` (via `npx @vscode/vsce package`) and installs it with
-`code --install-extension`. To cut a new version first, use
-`npm run release [patch|minor|major|x.y.z]` (see [scripts/release.js](scripts/release.js)).
+- **AI activity tracking** (see above) only reads event *metadata* — tool
+  names, timestamps, and the first ~20 characters of your first prompt per
+  session (kept as a stable label for the waiting-badge tooltip). It never
+  reads file contents, git commit messages/diffs, or terminal output.
+- **Status files** for in-progress AI sessions live at
+  `~/.codex-pet/sessions/*.json` and are deleted when a session ends (or
+  after the configured staleness window).
+- **XP/level/streak progress** is stored in this extension's own VS Code
+  global storage (`xp.json`, `streak.json`), plus a couple of small flags in
+  VS Code's `globalState` (last-selected pet(s), whether you've dismissed the
+  hooks-install prompt).
+- **Claude Code hooks**: installing them (via the command, or the one-time
+  prompt on activation) edits `~/.claude/settings.json` to add a few lines
+  that shell out to `~/.codex-pet/report-status.sh`. That script is written
+  to disk by the extension but only ever executed by Claude Code's own hook
+  mechanism, never by the extension itself — and nothing is installed
+  without your explicit confirmation in the dialog first.
+- The extension never spawns subprocesses or execs external commands itself.
 
-Or in VS Code: Extensions view → `...` menu → **Install from VSIX...**.
+To remove all of Codex Pet's data, delete `~/.codex-pet/` and uninstall the
+extension (VS Code cleans up its own global storage automatically).
+
+## Development
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for building and running from
+source, and packaging/installing a local `.vsix`.
 
 ## Not implemented (see vscode-pets for reference if you want these later)
 
