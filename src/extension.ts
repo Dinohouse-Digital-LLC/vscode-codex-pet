@@ -448,15 +448,11 @@ const HOOK_SCRIPT_PATH = path.join(AI_STATUS_DIR, 'report-status.sh');
 const HOOK_SCRIPT_CONTENTS = `#!/usr/bin/env bash
 # Installed by the Codex Pet VS Code extension. Reports AI tool activity so the
 # pet can react. Usage: report-status.sh <source> <busy|waiting|end> [label]
-# Claude Code pipes the hook's JSON payload on stdin; we pull "session_id" and
-# "cwd" out of it to key a per-session status file under sessions/, and fall
-# back to "tool_name" as a busy-event label (e.g. "Bash", "Edit") when none
-# was passed explicitly. "end" (SessionEnd) deletes the session's file. The
-# first UserPromptSubmit's "prompt" text is kept as a one-time "title" for the
-# session (not overwritten by later prompts), giving the waiting badge
-# something more identifying than the project name to show. This is a
-# best-effort sed extraction, not real JSON parsing, so a prompt containing a
-# literal quote/backslash can truncate early — acceptable for a label.
+# All JSON handling (parsing the hook payload piped on stdin, and reading/
+# writing the session status file) is done by node rather than sed/grep:
+# prompt text routinely contains quotes, backslashes, and other characters
+# that break naive regex extraction and can silently corrupt the JSON we
+# write back out. node ships alongside Claude Code, so it's always available.
 dir="$(cd "$(dirname "$0")" && pwd)"
 sessions_dir="$dir/sessions"
 mkdir -p "$sessions_dir"
@@ -470,49 +466,49 @@ if [ ! -t 0 ]; then
   input="$(cat 2>/dev/null)"
 fi
 
-session_id="$(printf '%s' "$input" | sed -n 's/.*"session_id" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
-cwd="$(printf '%s' "$input" | sed -n 's/.*"cwd" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
-prompt="$(printf '%s' "$input" | sed -n 's/.*"prompt" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
+printf '%s' "$input" | node -e '
+const fs = require("fs");
+const [sessionsDir, source, state, explicitLabel] = process.argv.slice(1);
 
-if [ -z "$label" ] && [ "$state" = "busy" ]; then
-  label="$(printf '%s' "$input" | sed -n 's/.*"tool_name" *: *"\\([^"]*\\)".*/\\1/p' | head -1)"
-fi
+let data = "";
+process.stdin.on("data", (chunk) => { data += chunk; });
+process.stdin.on("end", () => {
+  let payload = {};
+  try { payload = JSON.parse(data); } catch (e) {}
 
-session_id="\${session_id:-$source}"
-file="$sessions_dir/$source-$session_id.json"
+  const sessionId = payload.session_id || source;
+  const file = sessionsDir + "/" + source + "-" + sessionId + ".json";
 
-if [ "$state" = "end" ]; then
-  rm -f "$file"
-  exit 0
-fi
+  if (state === "end") {
+    try { fs.unlinkSync(file); } catch (e) {}
+    return;
+  }
 
-title=""
-if [ -f "$file" ]; then
-  title="$(sed -n 's/.*"title" *: *"\\([^"]*\\)".*/\\1/p' "$file" | head -1)"
-fi
-if [ -z "$title" ] && [ -n "$prompt" ]; then
-  title="$prompt"
-  if [ \${#title} -gt 60 ]; then
-    title="\${title:0:57}..."
-  fi
-fi
+  let label = explicitLabel || null;
+  if (!label && state === "busy") label = payload.tool_name || null;
 
-label_json="null"
-if [ -n "$label" ]; then
-  label_json="\\"$(printf '%s' "$label" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
-fi
+  let existing = {};
+  try { existing = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) {}
 
-cwd_json="null"
-if [ -n "$cwd" ]; then
-  cwd_json="\\"$(printf '%s' "$cwd" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
-fi
+  // Keep the first prompt of a session as its one-time "title" (not
+  // overwritten by later prompts), so the waiting badge has something more
+  // identifying to show than the project folder name.
+  let title = existing.title || null;
+  if (!title && payload.prompt) {
+    title = String(payload.prompt).trim().replace(/\\s+/g, " ");
+    if (title.length > 60) title = title.slice(0, 57) + "...";
+  }
 
-title_json="null"
-if [ -n "$title" ]; then
-  title_json="\\"$(printf '%s' "$title" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')\\""
-fi
-
-printf '{"source":"%s","state":"%s","updatedAt":%s,"label":%s,"cwd":%s,"title":%s}' "$source" "$state" "$(date +%s000)" "$label_json" "$cwd_json" "$title_json" > "$file"
+  fs.writeFileSync(file, JSON.stringify({
+    source: source,
+    state: state,
+    updatedAt: Date.now(),
+    label: label,
+    cwd: payload.cwd || null,
+    title: title,
+  }));
+});
+' "$sessions_dir" "$source" "$state" "$label"
 `;
 
 function ensureHookScript(): void {
