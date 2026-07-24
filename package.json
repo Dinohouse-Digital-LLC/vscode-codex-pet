@@ -8,7 +8,11 @@
   "icon": "media/icons/marketplace-icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TempusShift/vscode-codex-pet.git"
+    "url": "https://github.com/Dinohouse-Digital-LLC/vscode-codex-pet.git"
+  },
+  "homepage": "https://github.com/Dinohouse-Digital-LLC/vscode-codex-pet#readme",
+  "bugs": {
+    "url": "https://github.com/Dinohouse-Digital-LLC/vscode-codex-pet/issues"
   },
   "engines": {
     "vscode": "^1.85.0"
