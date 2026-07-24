@@ -2,7 +2,7 @@
   "name": "vscode-codex-pet",
   "displayName": "Codex Pet",
   "description": "A sprite-sheet pet that walks around a VS Code panel, similar to vscode-pets.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "dinohousedigitalllc",
   "license": "MIT",
   "icon": "media/icons/marketplace-icon.png",

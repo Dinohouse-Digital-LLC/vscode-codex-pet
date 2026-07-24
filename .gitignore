@@ -15,3 +15,13 @@ pets/**/previews/
 # Redundant PNG export of a webp spritesheet the extension actually loads
 # (manifests point at the .webp; the .png is only pipeline scratch).
 pets/**/spritesheet-seamless.png
+
+# More sprite-pipeline QA reports + scratch (regenerable, not read at runtime).
+pets/**/bottom-alignment-report.json
+pets/**/size-normalization-report.json
+pets/**/validation-source-keyframes.json
+pets/**/backup-*/
+
+# nonstandard-fluid: a sprite variant the extension never loads (it only reads
+# the standard spritesheet.webp and the nonstandard-seamless variant).
+pets/**/nonstandard-fluid/

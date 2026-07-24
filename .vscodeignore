@@ -24,3 +24,10 @@ pets/cat-stack/spritesheet.png
 pets/**/contact-sheet*.png
 pets/**/nonstandard-seamless/previews/**
 pets/**/spritesheet-seamless.png
+pets/**/bottom-alignment-report.json
+pets/**/size-normalization-report.json
+pets/**/validation-source-keyframes.json
+pets/**/backup-*/**
+# nonstandard-fluid is a sprite variant the extension never loads; keep it out
+# of the VSIX (each fluid dir is ~40MB of unused png/webp/preview scratch).
+pets/**/nonstandard-fluid/**

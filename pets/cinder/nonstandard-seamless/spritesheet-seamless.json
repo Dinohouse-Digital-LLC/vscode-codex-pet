@@ -1,15 +1,15 @@
 {
-  "schemaVersion": "cinder-nonstandard-seamless-1",
+  "schemaVersion": "cinder-seamless-source-repeat-1",
   "id": "cinder-seamless",
-  "displayName": "Cinder Seamless",
-  "description": "Nonstandard ping-pong Cinder sprite sheet with baked in-between frames. Not Codex v2 compatible; use this JSON manifest to read row-specific frame counts.",
+  "displayName": "Cinder Source Keyframes",
+  "description": "Nonstandard forward-only cinder sprite sheet rebuilt from source keyframes. It keeps the expanded seamless timing but uses repeated full keyframes instead of 50% in-between frames or baked reverse playback.",
   "codexCompatible": false,
   "sourcePet": "cinder",
   "sourceSpritesheet": "/Users/Z002QVV/.codex/pets/_runs/cinder/final/spritesheet-extended.webp",
-  "createdAt": "2026-07-23T14:49:53.869351Z",
+  "createdAt": "2026-07-24T00:00:00Z",
   "spritesheetPath": "spritesheet-seamless.webp",
   "pngPath": "spritesheet-seamless.png",
-  "sha256": "df960c7a2ad6fa7f42c27ed7e6d7e710182d37f18fec3bf321688cee3eb7ec4c",
+  "sha256": "a1be17dc4173f474d669c5cc9c30eb4644c73e3a4e4c56ca2c71df4b8740d1e9",
   "cell": {
     "width": 192,
     "height": 208
@@ -21,9 +21,13 @@
     "height": 2288
   },
   "frameGeneration": {
-    "method": "baked ping-pong sequence: source frames forward, 50% in-betweens, then reverse in-betweens back toward frame 0",
-    "loopClosure": "last frame is a 50% blend from source frame 1 to source frame 0, so the next frame 0 continues without a distant endpoint jump",
-    "sourceFramePlacement": "not all source frames are at even columns because the reverse half omits duplicate endpoints"
+    "method": "forward-only source keyframe repeats",
+    "removed": "deterministic 50% in-between frames and baked reverse playback",
+    "sourceFramePlacement": "expanded rows preserve the old seamless frame counts; each added column repeats a complete source keyframe chosen in forward order",
+    "loopClosure": "last frame wraps directly to source frame 0; no reverse half is present",
+    "transparentPixelCleanup": "fully transparent pixels have RGB cleared to 0 before WebP encoding",
+    "sizeNormalization": "per-cell proportional scale toward the pet median visible area, clamped to avoid extreme resizing, bottom-center anchored",
+    "bottomAlignment": "vertical-only shift of each visible sprite to a shared bottom baseline per cell"
   },
   "actions": [
     {
@@ -31,1851 +35,1405 @@
       "rowIndex": 0,
       "frameCount": 20,
       "sourceFrameCount": 6,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "calm resting, breathing, blink loop",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 17
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.0,
-      "fps": 10.0
+      "durationSeconds": 1.0,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "running-right",
       "rowIndex": 1,
       "frameCount": 28,
       "sourceFrameCount": 8,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "rightward drag movement loop",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 7,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 7,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 7,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 17
         },
         {
-          "kind": "source",
+          "kind": "source-repeat",
           "sourceIndex": 5,
-          "phase": "reverse",
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 20
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 21
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 22
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 23
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 24
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 25
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 26
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 27
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.8,
-      "fps": 10.0
+      "durationSeconds": 1.4,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "running-left",
       "rowIndex": 2,
       "frameCount": 28,
       "sourceFrameCount": 8,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "leftward drag movement loop",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 7,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 7,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 7,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 17
         },
         {
-          "kind": "source",
+          "kind": "source-repeat",
           "sourceIndex": 5,
-          "phase": "reverse",
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 20
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 21
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 22
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 23
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 24
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 25
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 26
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 27
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.8,
-      "fps": 10.0
+      "durationSeconds": 1.4,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "waving",
       "rowIndex": 3,
       "frameCount": 12,
       "sourceFrameCount": 4,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "friendly paw greeting",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
+          "kind": "source-repeat",
           "sourceIndex": 2,
-          "phase": "reverse",
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 1.2,
-      "fps": 10.0
+      "durationSeconds": 0.6,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "jumping",
       "rowIndex": 4,
-      "frameCount": 9,
+      "frameCount": 16,
       "sourceFrameCount": 5,
-      "frameDurationMs": 100,
+      "frameDurationMs": 50,
       "loop": false,
-      "loopMode": "ping-pong-baked",
       "description": "playful vertical hop",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 2,
+          "columnIndex": 9
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 3,
+          "columnIndex": 10
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 3,
+          "columnIndex": 11
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 3,
+          "columnIndex": 12
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 4,
+          "columnIndex": 13
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 4,
+          "columnIndex": 14
+        },
+        {
+          "kind": "source-repeat",
+          "sourceIndex": 4,
+          "columnIndex": 15
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 0.9,
-      "fps": 10.0
+      "durationSeconds": 0.8,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "failed",
       "rowIndex": 5,
       "frameCount": 28,
       "sourceFrameCount": 8,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "blocked or failed reaction",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 7,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 7,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 7,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 17
         },
         {
-          "kind": "source",
+          "kind": "source-repeat",
           "sourceIndex": 5,
-          "phase": "reverse",
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 20
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 21
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 22
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 23
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 24
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 25
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 26
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 27
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.8,
-      "fps": 10.0
+      "durationSeconds": 1.4,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "waiting",
       "rowIndex": 6,
       "frameCount": 20,
       "sourceFrameCount": 6,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "expectant waiting for user input",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 17
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.0,
-      "fps": 10.0
+      "durationSeconds": 1.0,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "running",
       "rowIndex": 7,
       "frameCount": 20,
       "sourceFrameCount": 6,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "active work or processing focus",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 17
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.0,
-      "fps": 10.0
+      "durationSeconds": 1.0,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "review",
       "rowIndex": 8,
       "frameCount": 20,
       "sourceFrameCount": 6,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "careful review and attention",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 17
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.0,
-      "fps": 10.0
+      "durationSeconds": 1.0,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "look-000-to-157.5",
       "rowIndex": 9,
       "frameCount": 28,
       "sourceFrameCount": 8,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "clockwise look directions from up through down-right",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 7,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 7,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 7,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 17
         },
         {
-          "kind": "source",
+          "kind": "source-repeat",
           "sourceIndex": 5,
-          "phase": "reverse",
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 20
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 21
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 22
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 23
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 24
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 25
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 26
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 27
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.8,
-      "fps": 10.0
+      "durationSeconds": 1.4,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     },
     {
       "id": "look-180-to-337.5",
       "rowIndex": 10,
       "frameCount": 28,
       "sourceFrameCount": 8,
-      "frameDurationMs": 100,
-      "loop": true,
-      "loopMode": "ping-pong-baked",
+      "frameDurationMs": 50,
+      "loop": false,
       "description": "clockwise look directions from down through up-left",
       "frames": [
         {
           "kind": "source",
           "sourceIndex": 0,
-          "phase": "forward",
           "columnIndex": 0
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 0,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 1
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 2
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 0,
           "columnIndex": 3
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 4
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 5
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 1,
           "columnIndex": 6
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 7
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 8
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 9
         },
         {
-          "kind": "source",
-          "sourceIndex": 5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 2,
           "columnIndex": 10
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 11
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 12
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 7,
-          "t": 0.5,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 3,
           "columnIndex": 13
         },
         {
-          "kind": "source",
-          "sourceIndex": 7,
-          "phase": "forward",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 14
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 7,
-          "toSourceIndex": 6,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 15
         },
         {
-          "kind": "source",
-          "sourceIndex": 6,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 16
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 6,
-          "toSourceIndex": 5,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 4,
           "columnIndex": 17
         },
         {
-          "kind": "source",
+          "kind": "source-repeat",
           "sourceIndex": 5,
-          "phase": "reverse",
           "columnIndex": 18
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 5,
-          "toSourceIndex": 4,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 19
         },
         {
-          "kind": "source",
-          "sourceIndex": 4,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 5,
           "columnIndex": 20
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 4,
-          "toSourceIndex": 3,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 21
         },
         {
-          "kind": "source",
-          "sourceIndex": 3,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 22
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 3,
-          "toSourceIndex": 2,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 23
         },
         {
-          "kind": "source",
-          "sourceIndex": 2,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 6,
           "columnIndex": 24
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 2,
-          "toSourceIndex": 1,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 25
         },
         {
-          "kind": "source",
-          "sourceIndex": 1,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 26
         },
         {
-          "kind": "inbetween",
-          "fromSourceIndex": 1,
-          "toSourceIndex": 0,
-          "t": 0.5,
-          "phase": "reverse",
+          "kind": "source-repeat",
+          "sourceIndex": 7,
           "columnIndex": 27
         }
       ],
-      "expectedFps": 20,
-      "durationSeconds": 2.8,
-      "fps": 10.0
+      "durationSeconds": 1.4,
+      "fps": 20.0,
+      "playMode": "single-shot-forward",
+      "completionBehavior": "stop on final frame; renderer or scheduler chooses the next action"
     }
   ],
   "recommendedRenderer": {
@@ -1887,7 +1445,7 @@
       "height": "cell.height"
     },
     "transparentUnusedCells": true,
-    "looping": "Play columns 0 through frameCount-1, then wrap to column 0. Do not apply extra ping-pong logic; it is already baked.",
+    "looping": "Rows are finite action clips. Play columns 0 through frameCount-1 once, then stop on the final frame or return control to the action scheduler. Do not wrap, ping-pong, reverse, or synthesize in-between frames unless a scheduler explicitly starts another action.",
     "timing": "Prefer frameDurationMs for exact scheduling; fps is provided for convenience and may be fractional."
   },
   "artifacts": {
@@ -1895,8 +1453,103 @@
     "previewDir": "previews/"
   },
   "timing": {
-    "defaultFrameDurationMs": 100,
-    "defaultFps": 10.0,
+    "defaultFrameDurationMs": 50,
+    "defaultFps": 20.0,
     "fpsMayBeFractional": true
+  },
+  "neutralLookFrame": {
+    "rowIndex": 0,
+    "columnIndex": 6,
+    "source": "idle source frame 0"
+  },
+  "playback": {
+    "frameDurationMs": 50,
+    "fps": 20.0,
+    "mode": "single-shot-forward-clips",
+    "looping": "Do not auto-wrap rows. Play the selected row once from column 0 through frameCount-1; after completion, the scheduler may return to idle or choose another action.",
+    "halfSpeedNote": "At half-speed playback, these remain full source keyframes held longer; no blended partial frames are exposed."
+  },
+  "idleBehavior": {
+    "mode": "weighted-ambient-actions",
+    "defaultActionId": "idle",
+    "returnToActionId": "idle",
+    "selection": "After the current idle or ambient clip completes, choose from ambientActions by weight if minIdleLoopsBeforeEligible and cooldownLoops permit it.",
+    "constraints": [
+      "Play selected action columns forward only from 0 through frameCount-1.",
+      "Do not auto-wrap rows; each selected action is a finite clip.",
+      "Do not ping-pong or reverse action rows.",
+      "Do not synthesize in-between frames; repeated frames in the sheet are full source keyframes.",
+      "Return control to the idle scheduler after each non-idle ambient action."
+    ],
+    "ambientActions": [
+      {
+        "id": "idle-breathe",
+        "actionId": "idle",
+        "label": "Calm breath",
+        "weight": 8,
+        "minIdleLoopsBeforeEligible": 0,
+        "notes": "Default quiet idle loop."
+      },
+      {
+        "id": "idle-wave",
+        "actionId": "waving",
+        "label": "Tiny hello",
+        "weight": 2,
+        "minIdleLoopsBeforeEligible": 2,
+        "cooldownLoops": 5,
+        "notes": "Occasional friendly gesture while idle."
+      },
+      {
+        "id": "idle-hop",
+        "actionId": "jumping",
+        "label": "Small hop",
+        "weight": 1,
+        "minIdleLoopsBeforeEligible": 3,
+        "cooldownLoops": 7,
+        "notes": "Rare energetic bounce; plays forward only and wraps, never ping-pongs."
+      },
+      {
+        "id": "idle-peek",
+        "actionId": "waiting",
+        "label": "Curious peek",
+        "weight": 2,
+        "minIdleLoopsBeforeEligible": 2,
+        "cooldownLoops": 5,
+        "notes": "Expectant look-around style idle flourish."
+      },
+      {
+        "id": "idle-focus",
+        "actionId": "review",
+        "label": "Quick focus",
+        "weight": 1,
+        "minIdleLoopsBeforeEligible": 4,
+        "cooldownLoops": 8,
+        "notes": "Brief attentive pose before returning to idle."
+      }
+    ]
+  },
+  "sizeNormalization": {
+    "appliedAt": "2026-07-24T00:00:00Z",
+    "rows": "standard action rows 0-8 only; look-direction rows preserved",
+    "method": "per-cell proportional scale toward the pet median visible area, clamped to avoid extreme resizing, bottom-center anchored",
+    "targetVisibleSize": 174.34,
+    "scaleClamp": {
+      "min": 0.75,
+      "max": 1.25
+    },
+    "fitBox": {
+      "maxWidth": 182,
+      "maxHeight": 198
+    }
+  },
+  "bottomAlignment": {
+    "appliedAt": "2026-07-24T00:00:00Z",
+    "method": "vertical-only shift of each visible sprite to a shared bottom baseline per cell",
+    "targetBottomY": 203,
+    "bottomPaddingPixels": 5,
+    "excludedActions": [
+      "jumping"
+    ],
+    "notes": "Jumping is excluded so it can intentionally leave the ground; all other rows are grounded to reduce vertical jitter."
   }
 }
