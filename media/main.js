@@ -38,6 +38,7 @@
   const JUMP_BASE_HEIGHT = 30;
   const CHASE_SPACING_GAP = 12;
 
+  let nearestPetToCursor = null;
   let cursorX = null;
   let cursorY = null;
   let cursorActive = false;
@@ -387,16 +388,33 @@
   function chaseCursor(pet, dt) {
     const spriteWidth = (pet.config.frameWidth || 40) * getScale(pet);
     const n = pets.length;
-    const i = pets.indexOf(pet);
+    // Rank by current x, not array order: pets wander independently during
+    // idle behavior, so their left-to-right order on screen can drift away
+    // from petDefs order. Slotting by live position keeps each pet's queue
+    // spot matching where it's actually standing while it walks over to wait
+    // beside the cursor.
+    const i = [...pets].sort((a, b) => a.x - b.x).indexOf(pet);
     const spacing = spriteWidth + CHASE_SPACING_GAP;
     const targetCursorX = cursorX + (i - (n - 1) / 2) * spacing;
 
     const spriteCenter = pet.x + spriteWidth / 2;
     const alignThreshold = spriteWidth / 3;
-    const isAligned = Math.abs(targetCursorX - spriteCenter) <= alignThreshold;
     const isAbove = cursorY !== null && cursorY < pet.petBox.y - 10;
+    // The greeting jump is about the cursor being over THIS pet, not about
+    // reaching its queue slot (which sits offset to the side of the cursor
+    // so pets don't stack). Checking proximity to cursorX directly, and
+    // requiring this pet be the closest of the bunch, keeps the jump on
+    // whichever pet the mouse is actually near instead of whichever one
+    // happens to walk into a side slot first.
+    const isNearCursor = Math.abs(cursorX - spriteCenter) <= alignThreshold;
 
-    if (isAligned && isAbove && pet.jumpCooldown <= 0 && pet.config.states.jump) {
+    if (
+      isNearCursor &&
+      pet === nearestPetToCursor &&
+      isAbove &&
+      pet.jumpCooldown <= 0 &&
+      pet.config.states.jump
+    ) {
       activateJump(pet, pet.petBox.y - cursorY);
       pet.jumpCooldown = timing.jumpCooldown;
       return;
@@ -879,6 +897,24 @@
     lastTime = now;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Recomputed once per frame (not per-pet inside chaseCursor) so every
+    // pet checks against the same snapshot of "who's actually closest" —
+    // otherwise ties/near-ties could let more than one pet think it's the
+    // nearest and both jump, or neither would agree on who should.
+    nearestPetToCursor = null;
+    if (cursorActive && cursorX !== null) {
+      let bestDist = Infinity;
+      for (const pet of pets) {
+        if (!pet.config) continue;
+        const spriteWidth = (pet.config.frameWidth || 40) * getScale(pet);
+        const dist = Math.abs(cursorX - (pet.x + spriteWidth / 2));
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearestPetToCursor = pet;
+        }
+      }
+    }
 
     // Draw order = array order, so later entries render on top.
     for (const pet of pets) {
