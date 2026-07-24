@@ -179,6 +179,12 @@ function xpProgress(xp: number, level: number): number {
 interface StreakState {
   dailyStreakDays: number;
   lastActiveWeekdayKey?: string;
+  // Continuous active-session clock (see XpManager.sessionActiveMs) plus the
+  // wall-clock time of the last activity, persisted so the session streak
+  // survives an extension/host restart instead of resetting to 0. On reload
+  // the gap since lastActivityAt is treated as an activity gap.
+  sessionActiveMs?: number;
+  lastActivityAt?: number;
 }
 
 function getStreakFilePath(context: vscode.ExtensionContext): vscode.Uri {
@@ -316,6 +322,7 @@ class XpManager {
   // windows' awards accumulate instead of racing to clobber each other.
   private pendingXpDelta: Record<string, number> = {};
   private streakDirty = false;
+  private sessionDirty = false;
   private lastActivityAt = 0;
   private lastClickXpAt = 0;
   // Continuous unbroken active duration, in ms — frozen (not reset) across a
@@ -335,6 +342,16 @@ class XpManager {
     const streak = await loadStreakState(this.context);
     this.dailyStreakDays = streak.dailyStreakDays;
     this.lastActiveWeekdayKey = streak.lastActiveWeekdayKey;
+    // Restore the session clock, treating the shut-down interval as an activity
+    // gap: kept if we came back within the hard-reset window, dropped otherwise.
+    // lastActivityAt stays 0 so the first markActive() after restart resumes the
+    // clock (see updateSessionStreak) rather than crediting the offline gap.
+    if (typeof streak.sessionActiveMs === 'number' && typeof streak.lastActivityAt === 'number') {
+      const gap = Date.now() - streak.lastActivityAt;
+      if (gap >= 0 && gap <= SESSION_HARD_RESET_MS) {
+        this.sessionActiveMs = streak.sessionActiveMs;
+      }
+    }
   }
 
   private scheduleSave(): void {
@@ -378,10 +395,13 @@ class XpManager {
       );
     }
 
-    if (this.streakDirty) {
+    if (this.streakDirty || this.sessionDirty) {
+      const daily = this.streakDirty;
       this.streakDirty = false;
+      this.sessionDirty = false;
       const disk = await loadStreakState(this.context);
       if (
+        daily &&
         disk.lastActiveWeekdayKey &&
         (!this.lastActiveWeekdayKey || compareDateKeys(disk.lastActiveWeekdayKey, this.lastActiveWeekdayKey) >= 0)
       ) {
@@ -390,9 +410,14 @@ class XpManager {
         this.dailyStreakDays = disk.dailyStreakDays;
         this.lastActiveWeekdayKey = disk.lastActiveWeekdayKey;
       }
+      // Keep whichever window's session clock is furthest along (the true
+      // longest current session) rather than last-writer-wins clobbering it.
+      this.sessionActiveMs = Math.max(this.sessionActiveMs, disk.sessionActiveMs ?? 0);
       await saveStreakState(this.context, {
         dailyStreakDays: this.dailyStreakDays,
         lastActiveWeekdayKey: this.lastActiveWeekdayKey,
+        sessionActiveMs: this.sessionActiveMs,
+        lastActivityAt: Math.max(this.lastActivityAt, disk.lastActivityAt ?? 0),
       });
     }
   }
@@ -537,6 +562,9 @@ class XpManager {
     } else {
       this.sessionActiveMs += gap;
     }
+    // Persist the advanced clock so it survives a restart (debounced via flush).
+    this.sessionDirty = true;
+    this.scheduleSave();
   }
 
   private updateDailyStreak(now: number): void {
