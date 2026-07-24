@@ -157,7 +157,7 @@
         },
         "codexPet.petScale": {
           "type": "number",
-          "default": 2,
+          "default": 1,
           "minimum": 0.25,
           "maximum": 5,
           "description": "Scale multiplier applied to the pet's sprite size."

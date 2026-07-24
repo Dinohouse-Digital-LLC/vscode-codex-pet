@@ -4,6 +4,12 @@ A minimal VS Code extension, in the spirit of [vscode-pets](https://github.com/t
 that plays a [Codex pet](https://codexpets.org/) sprite sheet in its own
 Activity Bar side panel.
 
+> **Disclaimer:** This is an independent, community project. It is not
+> affiliated with, endorsed by, sponsored by, or supported by OpenAI or Codex
+> in any way. "Codex" and any related names or marks are the property of their
+> respective owners; they are used here only to describe the sprite-sheet pet
+> format the extension loads.
+
 ## Status
 
 Loads any pet that follows the Codex v2 pet spec (`pet.json` + `spritesheet.webp`)
@@ -61,7 +67,7 @@ This works by watching per-session status files under
 "waiting", "updatedAt": <ms>, "label": <string | null>, "cwd": <string |
 null>, "title": <string | null> }`). A `busy` status older than 30s is treated as stale and ignored, so
 a crashed session can't leave the pet stuck animating. A `waiting` status can
-sit for much longer before being dropped (default 4 hours, via
+sit for much longer before being dropped (default 15 minutes, via
 `codexPet.waitingStaleMinutes`) since a session can legitimately wait on a human
 for a long time — this timeout only exists to eventually clean up sessions
 that crashed after finishing a response but before ending.
@@ -109,7 +115,7 @@ GitHub Copilot Chat has no hooks/lifecycle mechanism like Claude Code's, and
 VS Code doesn't yet expose a public API for observing Copilot Chat request
 status ([microsoft/vscode#310951](https://github.com/microsoft/vscode/issues/310951)
 is open but unshipped). So instead of a real signal, adding `copilot` to
-`codexPet.aiActivitySources` (off by default) uses a heuristic: bursts of
+`codexPet.aiActivitySources` (on by default) uses a heuristic: bursts of
 large or multi-part text-document edits look more like an agent streaming
 changes than someone typing key-by-key, so the extension treats those as
 "busy" and reports it into `~/.codex-pet/sessions/copilot-copilot.json` (same
@@ -147,6 +153,9 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.minActionSeconds`     | `3`     | Minimum seconds spent in one action before picking a new one.               |
 | `codexPet.maxActionSeconds`     | `10`    | Maximum seconds spent in one action before picking a new one.               |
 | `codexPet.idleAnimationSpeed`   | `0.5`   | Speed multiplier for stationary idle animations (idle, wave, jump, waiting, review, failed). Doesn't affect walk/run. |
+| `codexPet.idleStateWeights`     | `{}`    | Relative chance of each idle animation being picked, e.g. `{ "wave": 3, "jump": 1 }`. Unlisted states default to weight 1; 0 disables that animation. |
+| `codexPet.jumpCooldown`         | `5000`  | Minimum milliseconds between cursor-triggered jumps.                          |
+| `codexPet.petScale`             | `1`     | Scale multiplier applied to the pet's sprite size.                            |
 | `codexPet.aiActivitySources`    | `["claude-code","copilot"]` | Which AI tools trigger the busy animation + speech bubble: `claude-code`, `copilot` (experimental heuristic), both, or empty to disable. See below. |
 | `codexPet.waitingStaleMinutes`  | `15`    | How long (minutes) a Claude Code session can sit in the "waiting for you" state before its badge entry is dropped as stale (crash cleanup only — doesn't affect normal waiting). |
 | `codexPet.xpEnabled`            | `true`  | Whether the pet earns XP/levels from coding activity (AI tool activity, editor edits, terminal use, git commits, clicks). Progress (and level) is tracked separately per pet. |
@@ -154,7 +163,7 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.petGrowthMinScale`    | `0.5`   | Size multiplier at level 1, when growth is enabled. |
 | `codexPet.petGrowthMaxScale`    | `1.5`   | Size multiplier at `petGrowthMaxLevel`, when growth is enabled. |
 | `codexPet.petGrowthMaxLevel`    | `20`    | Level at which the pet reaches `petGrowthMaxScale`. Growth is linear from level 1, then caps. |
-| `codexPet.useSeamlessSprites`   | `false` | Use each pet's `nonstandard-seamless` spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available. |
+| `codexPet.useSeamlessSprites`   | `true`  | Use each pet's `nonstandard-seamless` spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available. |
 
 Timing settings (`walkSpeed`, `moveChance`, `min/maxActionSeconds`) apply live
 to an already-open view — no reload needed. Changing `selectedPet` swaps the
@@ -217,7 +226,7 @@ frame.
   weighting so a lower-level pet in the group gets a bigger share. Leveling up
   plays a jump + heart celebration. Progress persists per pet across restarts
   and updates; disable with `codexPet.xpEnabled`. Optionally
-  (`codexPet.petGrowthEnabled`, off by default), the pet's sprite size grows
+  (`codexPet.petGrowthEnabled`, on by default), the pet's sprite size grows
   with its level too, from a smaller starting size up to 1.5x the configured
   scale — and once a pet reaches `codexPet.petGrowthMaxLevel`, it gets a
   golden badge outline and a slow sparkle aura, so leveling further still has
@@ -277,7 +286,7 @@ source, and packaging/installing a local `.vsix`.
 ## Not implemented (see vscode-pets for reference if you want these later)
 
 - Persisting pet position/state across window reloads
-- Sound effects, click-to-interact, throw-ball
+- Sound effects, throw-ball
 - Reacting to Codex CLI activity (Claude Code is wired up via real hooks, and
   Copilot has an experimental heuristic — see the sections above).
   `waiting`/`failed` are still just triggered randomly for variety.

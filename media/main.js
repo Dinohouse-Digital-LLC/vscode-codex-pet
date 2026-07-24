@@ -195,8 +195,28 @@
     ctx.restore();
   }
 
+  // How much of the stage a single sprite is allowed to fill. Sprites stand on
+  // the bottom edge and jump upward, so leaving headroom keeps a big pet from
+  // clipping through the top of the container (the "glitching" you see when a
+  // sprite is scaled larger than the panel it lives in).
+  const MAX_SPRITE_HEIGHT_FRACTION = 0.85;
+  const MAX_SPRITE_WIDTH_FRACTION = 0.9;
+
+  // Caps the requested scale so the drawn sprite never outgrows the container.
+  // Only ever shrinks (returns <= 1), so the user's scale preference is honored
+  // whenever there's room and we adapt down automatically on small panels.
+  function containerFit(pet, baseScale) {
+    if (!canvas.height || !canvas.width) return 1;
+    const frameWidth = pet.config.frameWidth || 40;
+    const frameHeight = pet.config.frameHeight || 40;
+    const maxByHeight = (canvas.height * MAX_SPRITE_HEIGHT_FRACTION) / (frameHeight * baseScale);
+    const maxByWidth = (canvas.width * MAX_SPRITE_WIDTH_FRACTION) / (frameWidth * baseScale);
+    return clamp(Math.min(1, maxByHeight, maxByWidth), 0, 1);
+  }
+
   function getScale(pet) {
-    return (pet.config.scale || 1) * userScale * getGrowthMultiplier(pet);
+    const base = (pet.config.scale || 1) * userScale * getGrowthMultiplier(pet);
+    return base * containerFit(pet, base);
   }
 
   function resizeCanvas() {
