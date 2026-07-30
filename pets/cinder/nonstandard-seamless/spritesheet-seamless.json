@@ -36,7 +36,7 @@
       "frameCount": 20,
       "sourceFrameCount": 6,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "calm resting, breathing, blink loop",
       "frames": [
         {
@@ -151,7 +151,7 @@
       "frameCount": 28,
       "sourceFrameCount": 8,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "rightward drag movement loop",
       "frames": [
         {
@@ -306,7 +306,7 @@
       "frameCount": 28,
       "sourceFrameCount": 8,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "leftward drag movement loop",
       "frames": [
         {
@@ -786,7 +786,7 @@
       "frameCount": 20,
       "sourceFrameCount": 6,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "expectant waiting for user input",
       "frames": [
         {
@@ -901,7 +901,7 @@
       "frameCount": 20,
       "sourceFrameCount": 6,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "active work or processing focus",
       "frames": [
         {
@@ -1016,7 +1016,7 @@
       "frameCount": 20,
       "sourceFrameCount": 6,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "careful review and attention",
       "frames": [
         {
@@ -1131,7 +1131,7 @@
       "frameCount": 28,
       "sourceFrameCount": 8,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "clockwise look directions from up through down-right",
       "frames": [
         {
@@ -1286,7 +1286,7 @@
       "frameCount": 28,
       "sourceFrameCount": 8,
       "frameDurationMs": 50,
-      "loop": false,
+      "loop": true,
       "description": "clockwise look directions from down through up-left",
       "frames": [
         {

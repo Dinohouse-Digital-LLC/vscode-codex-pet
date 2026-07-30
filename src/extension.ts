@@ -273,6 +273,10 @@ function lateNightBonus(now: Date): number {
 }
 
 const XP_PER_ACTIVE_MINUTE = 2;
+// How much more each successive shown pet contributes to the active-minute
+// pool than the one before it (pet 1 contributes the base rate, pet 2
+// contributes base+step, pet 3 base+2*step, ...).
+const XP_POOL_STEP_PER_PET = 0.2;
 const XP_PER_COMMIT = 15;
 const XP_PER_CLICK = 1;
 const CLICK_XP_MIN_INTERVAL_MS = 4000;
@@ -307,12 +311,16 @@ interface StreakInfo {
 // flat one-off bonus. Clicks are a small supplementary source, rate-limited so
 // spam-clicking can't dominate.
 //
-// With multiple pets shown at once, active-minute XP is a shared pool that
-// scales sublinearly with pet count (rewards showing more pets without
-// letting it trivially multiply leveling speed), then split across the shown
-// pets with catch-up weighting so a fresh pet next to a maxed one closes the
-// gap. Commit XP stays flat per pet (a commit is a fixed, shared win); click
-// XP is attributed to whichever specific pet was clicked.
+// With multiple pets shown at once, active-minute XP is a shared pool where
+// each additional pet contributes progressively more than the last (pet 1 at
+// the base rate, pet 2 at base+step, pet 3 at base+2*step, ...), then the
+// pool is split across the shown pets with catch-up weighting so a fresh pet
+// next to a maxed one closes the gap. That escalating contribution means the
+// average XP per pet actually rises with pet count instead of the pool just
+// being divided more ways — going for levels is meant to reward showing more
+// pets, not grinding one at a time. Commit XP stays flat per pet (a commit is
+// a fixed, shared win); click XP is attributed to whichever specific pet was
+// clicked.
 class XpManager {
   private state: Record<string, XpRecord> = {};
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -473,6 +481,10 @@ class XpManager {
     return record;
   }
 
+  getLevel(petId: string): number {
+    return this.state[petId]?.level ?? 1;
+  }
+
   getHighestLevel(): number {
     let max = 1;
     for (const record of Object.values(this.state)) {
@@ -603,10 +615,15 @@ class XpManager {
       if (petIds.length === 0) return;
       if (Date.now() - this.lastActivityAt > ACTIVE_WINDOW_MS) return;
 
-      // Sublinear pool: 1 pet = 2 XP/min (unchanged), 2 pets = 3, 3 pets = 4, ...
+      // Escalating pool: pet 1 contributes 2 XP/min, pet 2 contributes 2.2,
+      // pet 3 contributes 2.4, pet 4 contributes 2.6, etc. — sum of that
+      // arithmetic series is n*base + step*n*(n-1)/2.
       const streakInfo = this.getStreakInfo();
       for (const provider of this.providers) provider.postStreakUpdate(streakInfo);
-      const pool = XP_PER_ACTIVE_MINUTE * (1 + 0.5 * (petIds.length - 1)) * streakInfo.multiplier;
+      const petCount = petIds.length;
+      const pool =
+        (petCount * XP_PER_ACTIVE_MINUTE + (XP_POOL_STEP_PER_PET * petCount * (petCount - 1)) / 2) *
+        streakInfo.multiplier;
 
       const levels = petIds.map((id) => this.getRecord(id).level);
       const maxLevel = Math.max(...levels);
@@ -762,10 +779,14 @@ interface PetPickItem extends vscode.QuickPickItem {
   pet?: Pet;
 }
 
-function buildPetPickItems(pets: Pet[], unlockedSlots: number): PetPickItem[] {
+function buildPetPickItems(
+  pets: Pet[],
+  unlockedSlots: number,
+  xpManager: XpManager,
+): PetPickItem[] {
   const items: PetPickItem[] = pets.map((pet) => ({
     label: pet.manifest.displayName,
-    description: pet.manifest.id,
+    description: `Lvl ${xpManager.getLevel(pet.manifest.id)} · ${pet.manifest.id}`,
     detail: pet.manifest.description,
     pet,
   }));
@@ -788,12 +809,13 @@ async function pickPets(
   context: vscode.ExtensionContext,
   pets: Pet[],
   unlockedSlots: number,
+  xpManager: XpManager,
 ): Promise<Pet[] | undefined> {
   return new Promise((resolve) => {
     const qp = vscode.window.createQuickPick<PetPickItem>();
     qp.canSelectMany = true;
     qp.placeholder = `Choose up to ${unlockedSlots} pet(s) to show at once`;
-    qp.items = buildPetPickItems(pets, unlockedSlots);
+    qp.items = buildPetPickItems(pets, unlockedSlots, xpManager);
 
     qp.onDidChangeSelection((selected) => {
       const pickable = selected.filter((item) => item.pet);
@@ -879,7 +901,7 @@ async function resolvePets(
     }
   }
 
-  const picked = await pickPets(context, pets, unlockedSlots);
+  const picked = await pickPets(context, pets, unlockedSlots, xpManager);
   return picked ?? [];
 }
 

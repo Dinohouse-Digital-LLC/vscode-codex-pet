@@ -43,7 +43,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.0,
-      "loop": false,
+      "loop": true,
       "description": "calm resting with visible breathing and scattered blinks",
       "frames": [
         {
@@ -158,7 +158,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.4,
-      "loop": false,
+      "loop": true,
       "description": "rightward drag with stronger stack sway",
       "frames": [
         {
@@ -313,7 +313,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.4,
-      "loop": false,
+      "loop": true,
       "description": "leftward drag with stronger stack sway",
       "frames": [
         {
@@ -793,7 +793,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.0,
-      "loop": false,
+      "loop": true,
       "description": "expectant bob while waiting for input",
       "frames": [
         {
@@ -908,7 +908,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.0,
-      "loop": false,
+      "loop": true,
       "description": "active work wobble and processing bounce",
       "frames": [
         {
@@ -1023,7 +1023,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.0,
-      "loop": false,
+      "loop": true,
       "description": "focused lean and settle",
       "frames": [
         {
@@ -1138,7 +1138,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.4,
-      "loop": false,
+      "loop": true,
       "description": "clockwise look directions from up through down-right",
       "frames": [
         {
@@ -1293,7 +1293,7 @@
       "frameDurationMs": 50,
       "fps": 20.0,
       "durationSeconds": 1.4,
-      "loop": false,
+      "loop": true,
       "description": "clockwise look directions from down through up-left",
       "frames": [
         {

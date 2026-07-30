@@ -165,20 +165,36 @@
   }
 
   // Prestige: past petGrowthMaxLevel, size growth plateaus but there's still
-  // a visible payoff for leveling further — a golden badge border + a slow
-  // sparkle aura around the pet.
+  // a visible payoff for leveling further — a badge border + a slow sparkle
+  // aura around the pet. Tiers escalate every additional maxLevel levels (so
+  // reaching tier 2 takes the same climb as reaching tier 1 did), cycling
+  // through a fixed color ramp and adding more sparkles per tier.
+  const PRESTIGE_TIER_COLORS = ['#ffd558', '#b9f2ff', '#ff8a8a', '#c792ea'];
+
   function isPrestige(pet) {
     return petGrowth.enabled && pet.level !== null && pet.level >= petGrowth.maxLevel;
   }
 
+  function getPrestigeTier(pet) {
+    if (!isPrestige(pet)) return 0;
+    const maxLevel = Math.max(petGrowth.maxLevel, 2);
+    return Math.floor((pet.level - maxLevel) / maxLevel) + 1;
+  }
+
+  function prestigeColor(tier) {
+    return PRESTIGE_TIER_COLORS[Math.min(tier, PRESTIGE_TIER_COLORS.length) - 1];
+  }
+
   function drawPrestigeAura(pet, now) {
-    if (!isPrestige(pet)) return;
+    const tier = getPrestigeTier(pet);
+    if (tier === 0) return;
 
     const cx = pet.petBox.x + pet.petBox.w / 2;
     const cy = pet.petBox.y + pet.petBox.h / 2;
     const radiusX = pet.petBox.w / 2 + 8;
     const radiusY = pet.petBox.h / 2 + 4;
-    const sparkleCount = 4;
+    const sparkleCount = Math.min(4 + (tier - 1) * 2, 12);
+    const color = prestigeColor(tier);
 
     ctx.save();
     for (let i = 0; i < sparkleCount; i++) {
@@ -187,7 +203,7 @@
       const sy = cy + Math.sin(angle) * radiusY;
       const twinkle = 0.5 + 0.5 * Math.sin(now / 220 + i * 1.7);
       ctx.globalAlpha = 0.35 + twinkle * 0.5;
-      ctx.fillStyle = '#ffd558';
+      ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(sx, sy, 1.4 + twinkle * 1.3, 0, Math.PI * 2);
       ctx.fill();
@@ -651,8 +667,9 @@
     roundRectPath(left, top, badgeWidth, badgeHeight, 5);
     ctx.fill();
 
-    if (isPrestige(pet) && !flashing) {
-      ctx.strokeStyle = 'rgba(255, 213, 88, 0.9)';
+    const badgeTier = getPrestigeTier(pet);
+    if (badgeTier > 0 && !flashing) {
+      ctx.strokeStyle = prestigeColor(badgeTier);
       ctx.lineWidth = 1.5;
       roundRectPath(left, top, badgeWidth, badgeHeight, 5);
       ctx.stroke();
@@ -680,7 +697,11 @@
   function drawLevelTooltip(pet) {
     if (!pet.hoveringLevelBadge || pet.level === null || !pet.levelBadgeBox) return;
 
-    const text = `Level ${pet.level} — ${Math.round(pet.xpProgress * 100)}% to next`;
+    const tooltipTier = getPrestigeTier(pet);
+    const text =
+      tooltipTier > 0
+        ? `Level ${pet.level} — Prestige ${tooltipTier} — ${Math.round(pet.xpProgress * 100)}% to next`
+        : `Level ${pet.level} — ${Math.round(pet.xpProgress * 100)}% to next`;
     const bubbleHeight = 20;
     const cx = pet.levelBadgeBox.x + pet.levelBadgeBox.w / 2;
     const bottomY = pet.levelBadgeBox.y - 4;
