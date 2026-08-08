@@ -419,8 +419,14 @@ class XpManager {
         this.lastActiveWeekdayKey = disk.lastActiveWeekdayKey;
       }
       // Keep whichever window's session clock is furthest along (the true
-      // longest current session) rather than last-writer-wins clobbering it.
-      this.sessionActiveMs = Math.max(this.sessionActiveMs, disk.sessionActiveMs ?? 0);
+      // longest current session) rather than last-writer-wins clobbering it -
+      // but only if disk's session is still alive (another window active
+      // within the hard-reset window). Otherwise disk just holds a stale
+      // pre-reset value, and adopting it via Math.max would undo a hard reset
+      // this window just made in updateSessionStreak().
+      const diskSessionAlive =
+        typeof disk.lastActivityAt === 'number' && Date.now() - disk.lastActivityAt <= SESSION_HARD_RESET_MS;
+      this.sessionActiveMs = Math.max(this.sessionActiveMs, diskSessionAlive ? disk.sessionActiveMs ?? 0 : 0);
       await saveStreakState(this.context, {
         dailyStreakDays: this.dailyStreakDays,
         lastActiveWeekdayKey: this.lastActiveWeekdayKey,
