@@ -221,10 +221,16 @@
           "minimum": 2,
           "description": "Level at which the pet reaches petGrowthMaxScale. Growth is linear between level 1 and this level, then caps."
         },
+        "codexPet.useNonstandardSprites": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use each pet's nonstandard spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available."
+        },
         "codexPet.useSeamlessSprites": {
           "type": "boolean",
           "default": true,
-          "description": "Use each pet's nonstandard-seamless spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available."
+          "markdownDeprecationMessage": "Renamed to `#codexPet.useNonstandardSprites#`. Still honored if set, but new setups should use the new name.",
+          "description": "Deprecated alias for codexPet.useNonstandardSprites."
         }
       }
     }
@@ -232,6 +238,8 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "lint": "eslint src",
+    "test": "vitest run",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package --no-rewrite-relative-links",
     "install-extension": "npm run package && code --install-extension $(node -p \"require('./package.json').name+'-'+require('./package.json').version+'.vsix'\")",
@@ -241,6 +249,9 @@
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.9.2",
-    "typescript": "^5.4.0"
+    "eslint": "^9.39.5",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10"
   }
 }

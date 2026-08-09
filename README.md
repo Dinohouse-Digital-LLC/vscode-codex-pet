@@ -163,7 +163,7 @@ changes needed, the folders are scanned fresh each time a pet is resolved.
 | `codexPet.petGrowthMinScale`    | `0.5`   | Size multiplier at level 1, when growth is enabled. |
 | `codexPet.petGrowthMaxScale`    | `1.5`   | Size multiplier at `petGrowthMaxLevel`, when growth is enabled. |
 | `codexPet.petGrowthMaxLevel`    | `20`    | Level at which the pet reaches `petGrowthMaxScale`. Growth is linear from level 1, then caps. |
-| `codexPet.useSeamlessSprites`   | `true`  | Use each pet's `nonstandard-seamless` spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available. |
+| `codexPet.useNonstandardSprites` | `true` | Use each pet's nonstandard spritesheet and manifest (smoother baked ping-pong loops) instead of the standard Codex-compatible one, when available. See [Nonstandard sprite sheet format](#nonstandard-sprite-sheet-format) below. Renamed from `codexPet.useSeamlessSprites`, which still works as a deprecated alias. |
 
 Timing settings (`walkSpeed`, `moveChance`, `min/maxActionSeconds`) apply live
 to an already-open view — no reload needed. Changing `selectedPet` swaps the
@@ -197,6 +197,73 @@ those were eyeballed from the bundled sample sheets under `pets/` (e.g.
 `pets/hoggie/spritesheet.webp`) — double check them against a pet's
 spritesheet if an animation looks like it's looping into a blank/magenta
 frame.
+
+## Nonstandard sprite sheet format
+
+Unlike the standard sheet above, this is **not** part of the published Codex
+spec — it's a format this extension's own asset pipeline produces, used only
+when `codexPet.useNonstandardSprites` is on and a pet ships one. It exists to
+get smoother, hand-tuned animations (variable frame counts per action, baked
+loop/ping-pong behavior) than the standard grid's fixed 8-column layout
+allows. A pet opts in by shipping both files under
+`pets/<pet-id>/nonstandard-seamless/`:
+
+- `spritesheet-seamless.webp` — the atlas image, an arbitrary
+  `columns × rows` grid of `cell.width × cell.height` cells (not fixed at
+  8×9/192×208 like the standard sheet — read the sizes from the manifest,
+  never assume them).
+- `spritesheet-seamless.json` — the manifest. Presence of *both* files (each
+  is `stat`-checked independently, see [`resolvePets`](src/pets.ts)) is what
+  sets a pet's `hasNonstandardVariant` flag; missing either one falls back to
+  the standard sheet regardless of the setting.
+
+The renderer ([`normalizeNonstandardConfig`](media/main.js)) only reads a
+subset of the manifest — the fields it actually consumes:
+
+| Field | Meaning |
+|-------|---------|
+| `cell.width`, `cell.height` | Pixel size of one grid cell. |
+| `actions[].id` | One of the action ids in the table below; unrecognized ids (including all `look-*` direction-pose rows) are ignored. |
+| `actions[].rowIndex` | Which atlas row this action's frames live in. |
+| `actions[].frameCount` | How many columns (starting at 0) to play. |
+| `actions[].fps` | Playback speed for this action. |
+| `actions[].loop` | Whether the clip repeats or holds on its last frame. |
+
+`actions[].id` → renderer state, mirroring
+[`NONSTANDARD_STATE_IDS`](media/main.js):
+
+| Manifest `id`     | Renderer state |
+|--------------------|----------------|
+| `idle`              | `idle`     |
+| `running-right`     | `runRight` |
+| `running-left`      | `runLeft`  |
+| `waving`            | `wave`     |
+| `jumping`           | `jump`     |
+| `failed`            | `failed`   |
+| `waiting`           | `waiting`  |
+| `running`           | `run`      |
+| `review`            | `review`   |
+
+`look-*` action ids (direction poses, not animations — e.g.
+`look-000-to-157.5`) are deliberately left unmapped so they never enter the
+idle rotation; they're reserved for a future cursor-facing feature that needs
+a pose lookup rather than a state.
+
+On-screen size is normalized against the pet's *standard* manifest, not
+copied from the nonstandard one: `scale` is derived as
+`(standardFrameWidth * standardScale) / cell.width`, so a nonstandard sheet
+with a different cell resolution still renders at the same footprint the
+standard manifest defines. This means every pet must still ship a standard
+`pet.json` + `spritesheet.webp` even when its nonstandard variant is what
+actually gets displayed.
+
+Everything else in the manifest — `schemaVersion`, `codexCompatible`,
+`sourcePet`/`sourceSpritesheet`, `frameGeneration`, `actions[].frames[]`,
+`recommendedRenderer`, `playback`, `idleBehavior`, `sizeNormalization`,
+`bottomAlignment`, `artifacts`, `neutralLookFrame`, `timing` — is generation-
+pipeline provenance (how the sheet was built from source keyframes, why
+frames were chosen, cleanup steps applied) preserved for reference and
+regeneration, not read by the extension at runtime.
 
 ## Current behavior
 

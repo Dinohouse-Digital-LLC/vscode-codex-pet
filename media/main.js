@@ -248,10 +248,10 @@
     return margin + (usable * index) / (total - 1);
   }
 
-  // Nonstandard-seamless manifests use a richer per-action schema (baked
-  // ping-pong loops with an explicit frame list), but every pet's frame
-  // columns run sequentially from 0, so it reduces to the same
-  // row/frameCount/fps/loop shape the renderer already knows how to play.
+  // Nonstandard manifests use a richer per-action schema (baked ping-pong
+  // loops with an explicit frame list), but every pet's frame columns run
+  // sequentially from 0, so it reduces to the same row/frameCount/fps/loop
+  // shape the renderer already knows how to play.
   //
   // The `look-*` actions are deliberately absent from this map: they are
   // direction poses (two rows of 8 sources, 22.5 degrees apart, covering a
@@ -259,7 +259,7 @@
   // read as the pet spinning. Leaving them unmapped keeps them out of
   // `states` entirely. They are reserved for aiming the pet at the cursor
   // later, which needs a pose lookup rather than a state.
-  const SEAMLESS_STATE_IDS = {
+  const NONSTANDARD_STATE_IDS = {
     idle: 'idle',
     'running-right': 'runRight',
     'running-left': 'runLeft',
@@ -272,11 +272,11 @@
   };
 
   // Each manifest declares its own cell size (`frameWidth`/`frameHeight` for
-  // the standard schema, `cell.width`/`cell.height` for seamless ones), and
-  // those sizes aren't guaranteed to match between a pet's standard sheet
-  // and its alternate one. `scale` is derived, not copied, so an alternate
-  // sheet renders at the same on-screen footprint as the standard manifest
-  // regardless of its own cell resolution.
+  // the standard schema, `cell.width`/`cell.height` for nonstandard ones),
+  // and those sizes aren't guaranteed to match between a pet's standard
+  // sheet and its alternate one. `scale` is derived, not copied, so an
+  // alternate sheet renders at the same on-screen footprint as the standard
+  // manifest regardless of its own cell resolution.
   const referenceFrameSizeCache = new Map();
   async function loadReferenceFrameSize(pet) {
     if (!pet.standardConfigUri) return { frameWidth: 192, frameHeight: 208, scale: 1 };
@@ -294,10 +294,10 @@
     return ref;
   }
 
-  function normalizeSeamlessConfig(raw, ref) {
+  function normalizeNonstandardConfig(raw, ref) {
     const states = {};
     for (const action of raw.actions || []) {
-      const stateId = SEAMLESS_STATE_IDS[action.id];
+      const stateId = NONSTANDARD_STATE_IDS[action.id];
       if (!stateId) continue;
       states[stateId] = {
         row: action.rowIndex,
@@ -324,7 +324,7 @@
     const raw = await res.json();
     if (Array.isArray(raw.actions)) {
       const ref = await loadReferenceFrameSize(pet);
-      pet.config = normalizeSeamlessConfig(raw, ref);
+      pet.config = normalizeNonstandardConfig(raw, ref);
     } else {
       pet.config = raw;
     }
@@ -615,6 +615,20 @@
     ];
     if (bonuses.weekend > 0) lines.push(`Weekend bonus: +${Math.round(bonuses.weekend * 100)}%`);
     if (bonuses.lateNight > 0) lines.push(`Late night bonus: +${Math.round(bonuses.lateNight * 100)}%`);
+    if (bonuses.commitStreak > 0) {
+      lines.push(`Commit streak: ${streakInfo.commitStreakDays}d (+${Math.round(bonuses.commitStreak * 100)}%)`);
+    }
+    if (bonuses.activityVariety > 0) {
+      lines.push(`Activity variety: +${Math.round(bonuses.activityVariety * 100)}%`);
+    }
+    if (bonuses.crossProject > 0) lines.push(`Cross-project: +${Math.round(bonuses.crossProject * 100)}%`);
+    if (bonuses.multiRepoCommit > 0) {
+      lines.push(`Multi-repo commits: +${Math.round(bonuses.multiRepoCommit * 100)}%`);
+    }
+    if (bonuses.combo > 0) {
+      const activeCount = Object.keys(bonuses).filter((key) => key !== 'combo' && bonuses[key] > 0).length;
+      lines.push(`Combo (${activeCount} sources): +${Math.round(bonuses.combo * 100)}%`);
+    }
 
     const lineHeight = 14;
     const padding = 6;

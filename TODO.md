@@ -1,3 +1,5 @@
 - [ ] Multiple pets at once — [plan](docs/plans/multiple-pets.md)
 - [ ] Gamification polish (streaks, off-hours bonuses, prestige cosmetic) — [plan](docs/plans/gamification-polish.md)
 - [ ] Use the `look-*` direction poses to face the cursor (kept out of the idle rotation on purpose; needs a pose lookup, TBD when/where it triggers)
+- [ ] Maintenance/tooling batch: silent persistence-write-failure fix, lint, tests, split `extension.ts` into modules, `.vscodeignore` allowlist — [plan](docs/plans/maintenance-and-tooling.md)
+- [ ] Investigate reported pet level loss — data currently looks consistent (all pets at level 17, XP merge logic only ever adds/keeps-larger); need repro details (which pet(s), level before vs. after, when noticed) before pursuing further. See "Open item" in [maintenance-and-tooling.md](docs/plans/maintenance-and-tooling.md).

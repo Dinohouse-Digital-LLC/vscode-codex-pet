@@ -1,33 +1,38 @@
-.vscode/**
-src/**
-.gitignore
-tsconfig.json
-**/*.map
-docs/**
-TODO.md
-.DS_Store
-**/.DS_Store
-*.zip
-**/*.zip
-# vsce reads only .vscodeignore once it exists (no .gitignore fallback), so
-# anything gitignored for being scratch/output must be repeated here or it
-# still ends up in the packaged VSIX. pets/_runs in particular is ~230MB of
-# working files from the sprite pipeline, not shipped pet assets.
-pets/_runs/**
-pets/**/validation-installed-*.json
-pets/**/motion-report-*.json
-# Unused duplicate: cat-stack's pet.json points at spritesheet.webp, not this.
-pets/cat-stack/spritesheet.png
-# QA/debug artifacts from the nonstandard-seamless sprite pipeline: contact
-# sheets, per-state preview gifs, and the raw PNG export (manifests point at
-# the .webp).
-pets/**/contact-sheet*.png
-pets/**/nonstandard-seamless/previews/**
-pets/**/spritesheet-seamless.png
-pets/**/bottom-alignment-report.json
-pets/**/size-normalization-report.json
-pets/**/validation-source-keyframes.json
-pets/**/backup-*/**
-# nonstandard-fluid is a sprite variant the extension never loads; keep it out
-# of the VSIX (each fluid dir is ~40MB of unused png/webp/preview scratch).
-pets/**/nonstandard-fluid/**
+# Deny-by-default: everything is excluded from the VSIX unless explicitly
+# allowlisted below via `!` negation. Replaces a denylist that grew
+# reactively and kept missing new file types - dev tooling added since
+# (test/, vitest.config.*, eslint.config.mjs, scripts/release.js) was never
+# added to the old denylist and was shipping in the VSIX unnoticed.
+#
+# vsce's `!` matching is NOT git's last-pattern-wins: reading
+# node_modules/@vscode/vsce/out/package.js's collectFiles(), it splits this
+# file into a plain-pattern list and a `!`-prefixed list, then keeps a file
+# if it *either* misses every plain pattern *or* matches any `!` pattern -
+# a `!` match always wins, regardless of pattern order or a later, more
+# specific plain pattern that might also match. Concretely: a broad
+# `!pets/*/spritesheet*.png` would have unignored cat-stack's unused/stray
+# spritesheet.png right along with flux-red's real one, and no later deny
+# line could claw it back. So every allow rule below is written as narrow as
+# the actual runtime read it corresponds to (see src/pets.ts, src/webview.ts)
+# rather than a convenient shared wildcard. (Also verified empirically with
+# `npx vsce ls` before settling on this.)
+**
+
+!LICENSE
+!out/**/*.js
+!media/**
+
+# pets/: allow only the exact files src/pets.ts and src/webview.ts read at
+# runtime for each pet - the manifest, its spritesheet (flux-red's manifest
+# is the one pet that points at a .png; every other pet points at .webp),
+# and the nonstandard-seamless variant's webp+json when present. Everything
+# else in a pet's folder is sprite-pipeline QA/scratch (contact sheets,
+# validation/motion/alignment reports, preview gifs, pets/_runs/, backups,
+# the unused nonstandard-fluid variant, cat-stack's stray duplicate
+# spritesheet.png) and stays excluded by the blanket deny above since
+# nothing here matches it.
+!pets/*/pet.json
+!pets/*/spritesheet.webp
+!pets/flux-red/spritesheet.png
+!pets/*/nonstandard-seamless/spritesheet-seamless.webp
+!pets/*/nonstandard-seamless/spritesheet-seamless.json
