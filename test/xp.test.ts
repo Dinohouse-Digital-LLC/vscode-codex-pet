@@ -3,6 +3,7 @@ import { Uri, workspace, __reset } from './vscode-mock';
 import {
   activityVarietyBonus,
   catchUpWeights,
+  claimStreakMilestones,
   comboBonus,
   commitStreakBonus,
   countMissedWeekdaysBetween,
@@ -10,6 +11,7 @@ import {
   dailyStreakBonus,
   lateNightBonus,
   levelForXp,
+  milestoneAt,
   multiRepoCommitBonus,
   sessionStreakBonus,
   weekendBonus,
@@ -164,6 +166,63 @@ describe('comboBonus', () => {
   });
 });
 
+describe('milestoneAt', () => {
+  const series = { firstThreshold: 10, thresholdGrowth: 2, firstXp: 100, xpGrowth: 1.5 };
+
+  it('returns the first tier at index 0', () => {
+    expect(milestoneAt(series, 0)).toEqual({ threshold: 10, xp: 100 });
+  });
+
+  it('grows threshold and xp geometrically, with xp tapering relative to threshold', () => {
+    expect(milestoneAt(series, 1)).toEqual({ threshold: 20, xp: 150 });
+    expect(milestoneAt(series, 2)).toEqual({ threshold: 40, xp: 225 });
+    // threshold quadrupled (10 -> 40) but xp only grew 2.25x (100 -> 225) -
+    // reward per unit of streak keeps shrinking, not staying flat or growing.
+  });
+});
+
+describe('claimStreakMilestones', () => {
+  const series = { firstThreshold: 10, thresholdGrowth: 2, firstXp: 100, xpGrowth: 1.5 };
+
+  it('awards nothing below the first threshold', () => {
+    const claimed = new Set<number>();
+    expect(claimStreakMilestones(5, claimed, series)).toEqual([]);
+    expect(claimed.size).toBe(0);
+  });
+
+  it('awards a threshold once reached and marks it claimed', () => {
+    const claimed = new Set<number>();
+    expect(claimStreakMilestones(10, claimed, series)).toEqual([100]);
+    expect(claimed.has(10)).toBe(true);
+  });
+
+  it('does not re-award an already-claimed threshold', () => {
+    const claimed = new Set<number>([10]);
+    expect(claimStreakMilestones(15, claimed, series)).toEqual([]);
+  });
+
+  it('awards every tier crossed at once when current jumps past several', () => {
+    const claimed = new Set<number>();
+    expect(claimStreakMilestones(45, claimed, series)).toEqual([100, 150, 225]); // tiers at 10, 20, 40
+    expect(claimed.has(10)).toBe(true);
+    expect(claimed.has(20)).toBe(true);
+    expect(claimed.has(40)).toBe(true);
+  });
+
+  it('never re-pays a threshold even if the streak resets and climbs back to it', () => {
+    const claimed = new Set<number>();
+    expect(claimStreakMilestones(10, claimed, series)).toEqual([100]);
+    // streak resets to 0 and grows back to exactly the same milestone
+    expect(claimStreakMilestones(10, claimed, series)).toEqual([]);
+  });
+
+  it('keeps producing new tiers indefinitely rather than stopping at a fixed list', () => {
+    const claimed = new Set<number>();
+    const farAhead = series.firstThreshold * Math.pow(series.thresholdGrowth, 20); // tier 20
+    expect(claimStreakMilestones(farAhead, claimed, series).length).toBe(21); // tiers 0..20
+  });
+});
+
 describe('countMissedWeekdaysBetween', () => {
   it('counts 0 for consecutive weekdays', () => {
     expect(countMissedWeekdaysBetween('2026-7-3', '2026-7-4')).toBe(0); // Mon -> Tue
@@ -269,6 +328,67 @@ describe('XpManager commit streak', () => {
 
     (mgr as any).updateCommitStreak(new Date(2026, 7, 11).getTime()); // Tuesday (2 missed weekdays: Fri + Mon) - hard reset
     expect((mgr as any).commitStreakDays).toBe(1);
+  });
+});
+
+describe('XpManager streak milestones', () => {
+  it('awards a reached daily-streak milestone to every owned pet, not just the shown ones', async () => {
+    const context = fakeContext();
+    const mgr = new XpManager(context, []);
+    await mgr.load();
+
+    // hoggie is shown; caspian is owned but not currently displayed.
+    mgr.setCurrentPets(['hoggie']);
+    (mgr as any).award('hoggie', 0);
+    (mgr as any).award('caspian', 0);
+
+    (mgr as any).dailyStreakDays = 14; // first milestone threshold
+    (mgr as any).streakDirty = true;
+    await mgr.flush();
+
+    const state = (mgr as any).state;
+    expect(state.hoggie.xp).toBe(150); // DAILY_STREAK_MILESTONE_SERIES tier 0 (14 days)
+    expect(state.caspian.xp).toBe(150);
+  });
+
+  it('does not re-award a milestone after the streak resets and climbs back to the same day count', async () => {
+    const context = fakeContext();
+    const mgr = new XpManager(context, []);
+    await mgr.load();
+    (mgr as any).award('hoggie', 0);
+
+    (mgr as any).dailyStreakDays = 14;
+    (mgr as any).streakDirty = true;
+    await mgr.flush();
+    expect((mgr as any).state.hoggie.xp).toBe(150);
+
+    // streak resets to 0 (e.g. 2 missed weekdays) and climbs back to 14
+    (mgr as any).dailyStreakDays = 0;
+    (mgr as any).streakDirty = true;
+    await mgr.flush();
+    (mgr as any).dailyStreakDays = 14;
+    (mgr as any).streakDirty = true;
+    await mgr.flush();
+
+    expect((mgr as any).state.hoggie.xp).toBe(150); // unchanged - already claimed
+  });
+
+  it('does not re-award a milestone already claimed on disk', async () => {
+    const context = fakeContext();
+    await saveStreakState(context, {
+      dailyStreakDays: 14,
+      dailyStreakMilestonesClaimed: [14],
+    });
+
+    const mgr = new XpManager(context, []);
+    await mgr.load();
+    (mgr as any).award('hoggie', 0);
+
+    (mgr as any).dailyStreakDays = 14;
+    (mgr as any).streakDirty = true;
+    await mgr.flush();
+
+    expect((mgr as any).state.hoggie.xp).toBe(0);
   });
 });
 

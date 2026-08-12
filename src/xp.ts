@@ -105,6 +105,12 @@ export interface StreakState {
   // the gap since lastActivityAt is treated as an activity gap.
   sessionActiveMs?: number;
   lastActivityAt?: number;
+  // Thresholds already paid out by claimStreakMilestones - permanent once
+  // claimed, so unioned across windows rather than adopted from whichever
+  // one wrote last (see XpManager.flush).
+  dailyStreakMilestonesClaimed?: number[];
+  commitStreakMilestonesClaimed?: number[];
+  sessionMilestonesClaimed?: number[];
 }
 
 function getStreakFilePath(context: vscode.ExtensionContext): vscode.Uri {
@@ -278,6 +284,91 @@ export function comboBonus(activeSourceCount: number): number {
   return Math.min(0.25, Math.max(0, activeSourceCount - 2) * 0.05);
 }
 
+export interface StreakMilestone {
+  threshold: number;
+  xp: number;
+}
+
+// Generates an unbounded ladder of milestones instead of a fixed list, so a
+// streak that outlasts every milestone anyone thought to hand-write still
+// keeps unlocking the next one rather than going quiet. Both threshold and
+// xp grow geometrically tier over tier, but xpGrowth is kept below
+// thresholdGrowth so the *reward per unit of streak* keeps tapering the
+// further out you go - consistent with how the streak bonuses themselves
+// (dailyStreakBonus, commitStreakBonus, sessionStreakBonus) flatten out
+// rather than growing forever.
+export interface MilestoneSeries {
+  firstThreshold: number;
+  thresholdGrowth: number;
+  firstXp: number;
+  xpGrowth: number;
+}
+
+export function milestoneAt(series: MilestoneSeries, index: number): StreakMilestone {
+  return {
+    threshold: Math.round(series.firstThreshold * Math.pow(series.thresholdGrowth, index)),
+    xp: Math.round(series.firstXp * Math.pow(series.xpGrowth, index)),
+  };
+}
+
+// One-time bonuses for outlasting a streak bonus's own cap (dailyStreakBonus
+// and commitStreakBonus both stop growing at 10 days, sessionStreakBonus at
+// 5h), so sticking with a streak well past where its multiplier stops rising
+// still has something to earn. Unlike the active-minute pool (split only
+// across the currently-shown pets), these pay out to every pet you own - a
+// months-long streak reflects you, not whichever pets happen to be on screen
+// that day. Thresholds double each tier: 14, 28, 56, 112, 224, 448, ... days.
+export const DAILY_STREAK_MILESTONE_SERIES: MilestoneSeries = {
+  firstThreshold: 14,
+  thresholdGrowth: 2,
+  firstXp: 150,
+  xpGrowth: 2.6,
+};
+
+// Same day cadence as the daily series (committing already implies being
+// active that day - see updateCommitStreak), at half the reward, mirroring
+// commitStreakBonus's own half-rate relationship to dailyStreakBonus.
+export const COMMIT_STREAK_MILESTONE_SERIES: MilestoneSeries = {
+  firstThreshold: 14,
+  thresholdGrowth: 2,
+  firstXp: 75,
+  xpGrowth: 2.6,
+};
+
+// Continuous-session personal bests, in ms, beyond sessionStreakBonus's own
+// cap. A session resets on any real gap (see SESSION_HARD_RESET_MS), so
+// these read as records - each one only pays out the first time a single
+// unbroken sitting ever reaches it, not something re-earned every session.
+// Thresholds grow more gently than the day-based series (1.4x, not 2x) since
+// hours within one sitting are a much scarcer resource than calendar days.
+export const SESSION_MILESTONE_SERIES: MilestoneSeries = {
+  firstThreshold: 6 * 60 * 60 * 1000,
+  thresholdGrowth: 1.4,
+  firstXp: 225,
+  xpGrowth: 2.2,
+};
+
+// Pure so it's testable without the manager. Walks the series tier by tier
+// from index 0 until a threshold exceeds current, so a counter that jumps
+// past several tiers at once - e.g. adopting a further-along streak restored
+// from disk - claims all of them together instead of one per call. claimed
+// is mutated in place with any newly-reached thresholds (and is checked, not
+// just appended to, so a streak that resets and climbs back to a threshold
+// it already cleared doesn't get paid twice); the return value is the xp
+// reward for each threshold crossed for the first time.
+export function claimStreakMilestones(current: number, claimed: Set<number>, series: MilestoneSeries): number[] {
+  const awards: number[] = [];
+  for (let index = 0; ; index++) {
+    const milestone = milestoneAt(series, index);
+    if (milestone.threshold > current) break;
+    if (!claimed.has(milestone.threshold)) {
+      claimed.add(milestone.threshold);
+      awards.push(milestone.xp);
+    }
+  }
+  return awards;
+}
+
 // Splits the active-minute pool across shown pets by level: a pet at the
 // group leader's level gets weight 1, a pet CATCH_UP_LEVEL_WINDOW+ levels
 // behind gets weight 2, linearly in between. Clamped so the split can't
@@ -371,6 +462,10 @@ export class XpManager {
   // See StreakState.committedReposToday - distinct repos committed to today.
   private committedReposToday = new Set<string>();
   private committedReposDayKey: string | undefined;
+  // Thresholds already paid out - see claimStreakMilestones.
+  private dailyStreakMilestonesClaimed = new Set<number>();
+  private commitStreakMilestonesClaimed = new Set<number>();
+  private sessionMilestonesClaimed = new Set<number>();
   // Distinct activity kinds ('edit' | 'terminal' | 'ai') seen since the last
   // per-minute tick (see start()), and distinct project roots touched since
   // the last session hard-reset (see updateSessionStreak). Both feed bonus
@@ -391,6 +486,9 @@ export class XpManager {
     this.lastActiveWeekdayKey = streak.lastActiveWeekdayKey;
     this.commitStreakDays = streak.commitStreakDays ?? 0;
     this.lastCommitWeekdayKey = streak.lastCommitWeekdayKey;
+    this.dailyStreakMilestonesClaimed = new Set(streak.dailyStreakMilestonesClaimed ?? []);
+    this.commitStreakMilestonesClaimed = new Set(streak.commitStreakMilestonesClaimed ?? []);
+    this.sessionMilestonesClaimed = new Set(streak.sessionMilestonesClaimed ?? []);
     // Only restore today's committed-repos set if it's actually still today -
     // a stale set from a previous day is meaningless and left empty instead.
     if (streak.committedReposDayKey === dateKey(new Date())) {
@@ -501,6 +599,29 @@ export class XpManager {
       const diskSessionAlive =
         typeof disk.lastActivityAt === 'number' && Date.now() - disk.lastActivityAt <= SESSION_HARD_RESET_MS;
       this.sessionActiveMs = Math.max(this.sessionActiveMs, diskSessionAlive ? disk.sessionActiveMs ?? 0 : 0);
+
+      // Union with whatever another window already claimed before checking
+      // for newly-crossed thresholds, so two windows that both advance the
+      // same counter around the same time don't each think a threshold is
+      // still unclaimed and double-award it.
+      for (const t of disk.dailyStreakMilestonesClaimed ?? []) this.dailyStreakMilestonesClaimed.add(t);
+      for (const t of disk.commitStreakMilestonesClaimed ?? []) this.commitStreakMilestonesClaimed.add(t);
+      for (const t of disk.sessionMilestonesClaimed ?? []) this.sessionMilestonesClaimed.add(t);
+      const milestoneAwards = [
+        ...claimStreakMilestones(
+          this.dailyStreakDays,
+          this.dailyStreakMilestonesClaimed,
+          DAILY_STREAK_MILESTONE_SERIES,
+        ),
+        ...claimStreakMilestones(
+          this.commitStreakDays,
+          this.commitStreakMilestonesClaimed,
+          COMMIT_STREAK_MILESTONE_SERIES,
+        ),
+        ...claimStreakMilestones(this.sessionActiveMs, this.sessionMilestonesClaimed, SESSION_MILESTONE_SERIES),
+      ];
+      for (const xp of milestoneAwards) this.awardToAllPets(xp);
+
       await saveStreakState(this.context, {
         dailyStreakDays: this.dailyStreakDays,
         lastActiveWeekdayKey: this.lastActiveWeekdayKey,
@@ -510,8 +631,18 @@ export class XpManager {
         committedReposDayKey: this.committedReposDayKey,
         sessionActiveMs: this.sessionActiveMs,
         lastActivityAt: Math.max(this.lastActivityAt, disk.lastActivityAt ?? 0),
+        dailyStreakMilestonesClaimed: Array.from(this.dailyStreakMilestonesClaimed),
+        commitStreakMilestonesClaimed: Array.from(this.commitStreakMilestonesClaimed),
+        sessionMilestonesClaimed: Array.from(this.sessionMilestonesClaimed),
       });
     }
+  }
+
+  // Awards to every pet you own (this.state), not just the currently-shown
+  // ones (currentPetIds) - used by streak milestones, which reward overall
+  // dedication rather than whichever pets happen to be on screen.
+  private awardToAllPets(amount: number): void {
+    for (const petId of Object.keys(this.state)) this.award(petId, amount);
   }
 
   // Picks up XP/streak changes written by other windows, without clobbering
