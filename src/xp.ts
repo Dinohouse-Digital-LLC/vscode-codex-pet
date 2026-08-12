@@ -42,10 +42,17 @@ export async function saveXpState(
 ): Promise<void> {
   try {
     await vscode.workspace.fs.createDirectory(context.globalStorageUri);
-    await vscode.workspace.fs.writeFile(
-      getXpFilePath(context),
-      Buffer.from(JSON.stringify(state, null, 2)),
-    );
+    const target = getXpFilePath(context);
+    // Atomic write: tmp file + rename so a mid-write crash never leaves a
+    // truncated/corrupt xp.json (same pattern as saveStreakState).
+    const tmp = vscode.Uri.joinPath(context.globalStorageUri, `xp.json.${Date.now()}.tmp`);
+    await vscode.workspace.fs.writeFile(tmp, Buffer.from(JSON.stringify(state, null, 2)));
+    try {
+      await vscode.workspace.fs.rename(tmp, target, { overwrite: true });
+    } catch (renameErr) {
+      await vscode.workspace.fs.delete(tmp).then(undefined, () => {});
+      throw renameErr;
+    }
   } catch (err) {
     // Best-effort: if this fails, XP just won't persist across sessions.
     console.error('codex-pet: failed to save xp.json', err);
@@ -147,7 +154,7 @@ export async function cleanupOrphanedTmpFiles(context: vscode.ExtensionContext):
     const entries = await vscode.workspace.fs.readDirectory(context.globalStorageUri);
     for (const [name, type] of entries) {
       if (type !== vscode.FileType.File) continue;
-      if (!/^streak\.json\.\d+\.tmp$/.test(name)) continue;
+      if (!/^(xp|streak)\.json\.\d+\.tmp$/.test(name)) continue;
       await vscode.workspace.fs
         .delete(vscode.Uri.joinPath(context.globalStorageUri, name))
         .then(undefined, () => {});
@@ -420,6 +427,12 @@ export class XpManager {
     this.pendingXpDelta = {};
     if (Object.keys(delta).length > 0) {
       const disk = await loadXpState(this.context);
+      // If disk came back empty or partial (e.g. due to a corrupt mid-write
+      // file), preserve any pets already in in-memory state so they aren't
+      // silently dropped when we do `this.state = disk` below.
+      for (const [petId, record] of Object.entries(this.state)) {
+        if (!(petId in disk)) disk[petId] = record;
+      }
       for (const [petId, amount] of Object.entries(delta)) {
         const record = disk[petId] ?? { xp: 0, level: 1, lastUpdated: 0 };
         record.xp += amount;
