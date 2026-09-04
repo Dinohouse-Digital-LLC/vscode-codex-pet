@@ -166,23 +166,41 @@
 
   // Prestige: past petGrowthMaxLevel, size growth plateaus but there's still
   // a visible payoff for leveling further — a badge border + a slow sparkle
-  // aura around the pet. Tiers escalate every additional maxLevel levels (so
-  // reaching tier 2 takes the same climb as reaching tier 1 did), cycling
-  // through a fixed color ramp and adding more sparkles per tier.
-  const PRESTIGE_TIER_COLORS = ['#ffd558', '#b9f2ff', '#ff8a8a', '#c792ea'];
+  // aura around the pet. Tiers escalate every PRESTIGE_LEVEL_STEP levels,
+  // deliberately matching the level-15/30 pet-slot unlock cadence
+  // (multiple-pets.md) rather than petGrowthMaxLevel, so prestige tiers keep
+  // lining up with slot unlocks even if the growth cap setting changes. The
+  // ramp cycles (rather than clamping to the last color) so tiers stay
+  // visually distinct instead of flattening into one color forever past tier 6.
+  // Classic RPG item-rarity ramp (common -> mythic) as the starting palette.
+  const PRESTIGE_LEVEL_STEP = 15;
+  const PRESTIGE_TIER_COLORS = [
+    '#9d9d9d', // tier 1 — common (gray)
+    '#1eff00', // tier 2 — uncommon (green)
+    '#0070dd', // tier 3 — rare (blue)
+    '#a335ee', // tier 4 — epic (purple)
+    '#ff8000', // tier 5 — legendary (orange)
+    '#e6cc80', // tier 6 — mythic (gold)
+  ];
 
   function isPrestige(pet) {
-    return petGrowth.enabled && pet.level !== null && pet.level >= petGrowth.maxLevel;
+    return petGrowth.enabled && pet.level !== null && pet.level >= PRESTIGE_LEVEL_STEP;
   }
 
   function getPrestigeTier(pet) {
     if (!isPrestige(pet)) return 0;
-    const maxLevel = Math.max(petGrowth.maxLevel, 2);
-    return Math.floor((pet.level - maxLevel) / maxLevel) + 1;
+    return Math.floor((pet.level - PRESTIGE_LEVEL_STEP) / PRESTIGE_LEVEL_STEP) + 1;
   }
 
   function prestigeColor(tier) {
-    return PRESTIGE_TIER_COLORS[Math.min(tier, PRESTIGE_TIER_COLORS.length) - 1];
+    return PRESTIGE_TIER_COLORS[(tier - 1) % PRESTIGE_TIER_COLORS.length];
+  }
+
+  // Each full pass through the color ramp glows a bit brighter, so tier 7
+  // (second gold) still reads as more prestigious than tier 1.
+  function prestigeGlowStrength(tier) {
+    const cycle = Math.floor((tier - 1) / PRESTIGE_TIER_COLORS.length);
+    return Math.min(6 + cycle * 3, 18);
   }
 
   function drawPrestigeAura(pet, now) {
@@ -195,8 +213,11 @@
     const radiusY = pet.petBox.h / 2 + 4;
     const sparkleCount = Math.min(4 + (tier - 1) * 2, 12);
     const color = prestigeColor(tier);
+    const glow = prestigeGlowStrength(tier);
 
     ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = glow;
     for (let i = 0; i < sparkleCount; i++) {
       const angle = now / 900 + (i * (Math.PI * 2)) / sparkleCount;
       const sx = cx + Math.cos(angle) * radiusX;
@@ -294,6 +315,19 @@
     return ref;
   }
 
+  // The generation pipeline's per-pet size normalization only equalizes a
+  // pet's own actions against each other (`sizeNormalization.targetVisibleSize`
+  // in the nonstandard manifest) — it doesn't equalize that target across
+  // different pets, so some pets' creatures fill noticeably more/less of
+  // their cell than others even at the same on-screen cell size. The
+  // nonstandard cell size (192x208) matches the standard grid's, so this is
+  // set to the actual visible height standard (non-`sizeNormalization`) Codex
+  // pets draw their idle frame at out of that 208px-tall cell — measured
+  // directly off several installed standard sheets (frieren, astra-blue,
+  // glace, jinx-arcane2, blackdragon: 198, 198, 198, 194, 198px) — so
+  // nonstandard pets end up matching how tall standard pets actually render.
+  const REFERENCE_VISIBLE_SIZE = 197;
+
   function normalizeNonstandardConfig(raw, ref) {
     const states = {};
     for (const action of raw.actions || []) {
@@ -306,10 +340,14 @@
         loop: action.loop,
       };
     }
+    const targetVisibleSize = raw.sizeNormalization && raw.sizeNormalization.targetVisibleSize;
+    const visibleSizeCorrection = targetVisibleSize
+      ? REFERENCE_VISIBLE_SIZE / targetVisibleSize
+      : 1;
     return {
       frameWidth: raw.cell.width,
       frameHeight: raw.cell.height,
-      scale: (ref.frameWidth * ref.scale) / raw.cell.width,
+      scale: ((ref.frameWidth * ref.scale) / raw.cell.width) * visibleSizeCorrection,
       defaultState: 'idle',
       busyState: 'review',
       movementStates: { right: 'runRight', left: 'runLeft' },

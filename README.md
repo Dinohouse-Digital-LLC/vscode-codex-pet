@@ -257,6 +257,19 @@ standard manifest defines. This means every pet must still ship a standard
 `pet.json` + `spritesheet.webp` even when its nonstandard variant is what
 actually gets displayed.
 
+That cell-size-based scale assumes each pet's creature fills its cell
+proportionally the same, which the generation pipeline's own per-pet size
+normalization doesn't guarantee across *different* pets (only within one
+pet's own actions, via `sizeNormalization.targetVisibleSize` — see below).
+The renderer applies a further correction, scaling by
+`REFERENCE_VISIBLE_SIZE / targetVisibleSize` (in `media/main.js`), so pets
+whose creature occupies a smaller or larger share of the cell still render
+at the same visible height as one another. `REFERENCE_VISIBLE_SIZE` is set
+to the visible idle-frame height standard (non-`sizeNormalization`) Codex
+pets actually draw at out of their shared 208px-tall cell (measured directly
+off installed sheets), since the nonstandard cell size matches the standard
+grid's.
+
 Everything else in the manifest — `schemaVersion`, `codexCompatible`,
 `sourcePet`/`sourceSpritesheet`, `frameGeneration`, `actions[].frames[]`,
 `recommendedRenderer`, `playback`, `idleBehavior`, `sizeNormalization`,
