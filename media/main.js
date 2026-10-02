@@ -112,7 +112,6 @@
   }
 
   const pets = petDefs.map((def) => createPetInstance(def));
-  window.__codexPetDebug = pets;
 
   window.addEventListener('message', (event) => {
     const data = event.data;
