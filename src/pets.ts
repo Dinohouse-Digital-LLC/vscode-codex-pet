@@ -167,6 +167,7 @@ export async function resolvePets(
     return [];
   }
 
+  xpManager.setKnownPetIds(pets.map((pet) => pet.manifest.id));
   const unlockedSlots = getUnlockedSlotCount(xpManager.getHighestLevel());
 
   if (!forcePick) {

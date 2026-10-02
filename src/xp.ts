@@ -27,6 +27,24 @@ function getXpFilePath(context: vscode.ExtensionContext): vscode.Uri {
   return vscode.Uri.joinPath(context.globalStorageUri, 'xp.json');
 }
 
+// vscode-userdata's globalStorage folder is occasionally reported nonexistent
+// on the very first write of a session (e.g. FileNotFound/EntryNotFound from
+// writeFile) even right after createDirectory resolved, seemingly a stale
+// provider-side cache. Recreating the directory and retrying once clears it;
+// a second failure is treated as a genuine error by the caller.
+async function writeFileWithRetry(
+  context: vscode.ExtensionContext,
+  uri: vscode.Uri,
+  content: Uint8Array,
+): Promise<void> {
+  try {
+    await vscode.workspace.fs.writeFile(uri, content);
+  } catch (err) {
+    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+    await vscode.workspace.fs.writeFile(uri, content);
+  }
+}
+
 export async function loadXpState(context: vscode.ExtensionContext): Promise<Record<string, XpRecord>> {
   try {
     const bytes = await vscode.workspace.fs.readFile(getXpFilePath(context));
@@ -46,7 +64,7 @@ export async function saveXpState(
     // Atomic write: tmp file + rename so a mid-write crash never leaves a
     // truncated/corrupt xp.json (same pattern as saveStreakState).
     const tmp = vscode.Uri.joinPath(context.globalStorageUri, `xp.json.${Date.now()}.tmp`);
-    await vscode.workspace.fs.writeFile(tmp, Buffer.from(JSON.stringify(state, null, 2)));
+    await writeFileWithRetry(context, tmp, Buffer.from(JSON.stringify(state, null, 2)));
     try {
       await vscode.workspace.fs.rename(tmp, target, { overwrite: true });
     } catch (renameErr) {
@@ -134,7 +152,7 @@ export async function saveStreakState(context: vscode.ExtensionContext, state: S
     // that kills the process mid-write can never leave a truncated/corrupt
     // streak.json behind (which loadStreakState would otherwise treat as "no streak").
     const tmp = vscode.Uri.joinPath(context.globalStorageUri, `streak.json.${Date.now()}.tmp`);
-    await vscode.workspace.fs.writeFile(tmp, Buffer.from(JSON.stringify(state, null, 2)));
+    await writeFileWithRetry(context, tmp, Buffer.from(JSON.stringify(state, null, 2)));
     try {
       await vscode.workspace.fs.rename(tmp, target, { overwrite: true });
     } catch (renameErr) {
@@ -356,6 +374,16 @@ export const SESSION_MILESTONE_SERIES: MilestoneSeries = {
 // just appended to, so a streak that resets and climbs back to a threshold
 // it already cleared doesn't get paid twice); the return value is the xp
 // reward for each threshold crossed for the first time.
+export function achievementProgress(
+  current: number,
+  claimed: Set<number>,
+  series: MilestoneSeries,
+): AchievementProgress {
+  let index = 0;
+  while (claimed.has(milestoneAt(series, index).threshold)) index++;
+  return { current, claimed: claimed.size, next: milestoneAt(series, index) };
+}
+
 export function claimStreakMilestones(current: number, claimed: Set<number>, series: MilestoneSeries): number[] {
   const awards: number[] = [];
   for (let index = 0; ; index++) {
@@ -419,6 +447,20 @@ export interface StreakInfo {
     multiRepoCommit: number;
     combo: number;
   };
+  achievements: {
+    daily: AchievementProgress;
+    commit: AchievementProgress;
+    session: AchievementProgress;
+  };
+}
+
+// One-time milestone ladder status for display: how many tiers are already
+// paid out, and the next unclaimed tier (threshold in the series' own unit:
+// days for streaks, ms for sessions).
+export interface AchievementProgress {
+  current: number;
+  claimed: number;
+  next: StreakMilestone;
 }
 
 // Awards XP for real coding activity: any minute containing AI-tool activity,
@@ -473,6 +515,7 @@ export class XpManager {
   private activeKinds = new Set<string>();
   private projectsThisSession = new Set<string>();
   currentPetIds: string[] = [];
+  private knownPetIds: string[] = [];
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -638,11 +681,19 @@ export class XpManager {
     }
   }
 
-  // Awards to every pet you own (this.state), not just the currently-shown
-  // ones (currentPetIds) - used by streak milestones, which reward overall
-  // dedication rather than whichever pets happen to be on screen.
+  // Awards to every pet you own, not just the currently-shown ones
+  // (currentPetIds) - used by streak milestones, which reward overall
+  // dedication rather than whichever pets happen to be on screen. "Owned"
+  // is every installed pet (knownPetIds), plus any with saved XP whose
+  // folder has since been removed; this.state alone would skip pets that
+  // have never been shown and so have no record yet.
   private awardToAllPets(amount: number): void {
-    for (const petId of Object.keys(this.state)) this.award(petId, amount);
+    const ids = new Set([...Object.keys(this.state), ...this.knownPetIds]);
+    for (const petId of ids) this.award(petId, amount);
+  }
+
+  setKnownPetIds(petIds: string[]): void {
+    this.knownPetIds = petIds;
   }
 
   // Picks up XP/streak changes written by other windows, without clobbering
@@ -748,6 +799,19 @@ export class XpManager {
       sessionActiveMs: this.sessionActiveMs,
       multiplier,
       bonuses,
+      achievements: {
+        daily: achievementProgress(
+          this.dailyStreakDays,
+          this.dailyStreakMilestonesClaimed,
+          DAILY_STREAK_MILESTONE_SERIES,
+        ),
+        commit: achievementProgress(
+          this.commitStreakDays,
+          this.commitStreakMilestonesClaimed,
+          COMMIT_STREAK_MILESTONE_SERIES,
+        ),
+        session: achievementProgress(this.sessionActiveMs, this.sessionMilestonesClaimed, SESSION_MILESTONE_SERIES),
+      },
     };
   }
 

@@ -112,6 +112,7 @@
   }
 
   const pets = petDefs.map((def) => createPetInstance(def));
+  window.__codexPetDebug = pets;
 
   window.addEventListener('message', (event) => {
     const data = event.data;
@@ -666,6 +667,18 @@
     if (bonuses.combo > 0) {
       const activeCount = Object.keys(bonuses).filter((key) => key !== 'combo' && bonuses[key] > 0).length;
       lines.push(`Combo (${activeCount} sources): +${Math.round(bonuses.combo * 100)}%`);
+    }
+
+    const ach = streakInfo.achievements;
+    if (ach) {
+      lines.push('Achievements (one-time, all pets):');
+      const fmt = (label, a, unit) => {
+        const nextText = unit === 'h' ? `${+(a.next.threshold / 3600000).toFixed(1)}h` : `${a.next.threshold}d`;
+        lines.push(`  ${label}: ${a.claimed} earned, next ${nextText} (+${a.next.xp} XP)`);
+      };
+      fmt('Daily streak', ach.daily, 'd');
+      fmt('Commit streak', ach.commit, 'd');
+      fmt('Session', ach.session, 'h');
     }
 
     const lineHeight = 14;
